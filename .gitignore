@@ -4,7 +4,7 @@ coverage.out
 *.log
 *.exe
 *.test
-runtime/
+/runtime/
 .idea/
 .artifacts/
 build/

@@ -95,3 +95,11 @@
 - wire richer setup field persistence to real product config once those config contracts are defined
 - add similar partial-report/error contracts for install and repair if maintenance execution needs the same operator visibility
 - validate the first real GitHub Actions tag release and tighten any platform-specific pipeline gaps
+
+## 2026-03-08
+
+### done
+
+- validated GitHub access through `gh` and inspected failed tag release run `22807368410`
+- traced the release failure to `.gitignore` matching `internal/runtime/` via `runtime/`, which kept the whole runtime package out of git while local tests still passed
+- narrowed the ignore rule to root-only `/runtime/` so `internal/runtime/*` is tracked correctly for CI and future commits
