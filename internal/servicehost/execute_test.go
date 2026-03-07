@@ -37,8 +37,8 @@ func TestUninstallActionsForLinux(t *testing.T) {
 	if len(actions) != 3 {
 		t.Fatalf("expected 3 uninstall actions, got %d", len(actions))
 	}
-	if !actions[0].IgnoreFailure {
-		t.Fatalf("expected disable-service to ignore failure")
+	if actions[0].IgnoreFailure {
+		t.Fatalf("expected disable-service failure to surface")
 	}
 }
 

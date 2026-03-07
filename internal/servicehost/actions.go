@@ -58,7 +58,7 @@ func uninstallActionsForOS(plan Plan, targetOS string) ([]Action, error) {
 		}, nil
 	case "linux":
 		return []Action{
-			{Name: "disable-service", Command: "systemctl", Args: []string{"disable", "--now", plan.ServiceName}, IgnoreFailure: true},
+			{Name: "disable-service", Command: "systemctl", Args: []string{"disable", "--now", plan.ServiceName}},
 			{Name: "remove-unit", Command: "rm", Args: []string{"-f", linuxUnitInstallPath(plan)}},
 			{Name: "systemd-daemon-reload", Command: "systemctl", Args: []string{"daemon-reload"}},
 		}, nil

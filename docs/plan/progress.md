@@ -103,3 +103,5 @@
 - validated GitHub access through `gh` and inspected failed tag release run `22807368410`
 - traced the release failure to `.gitignore` matching `internal/runtime/` via `runtime/`, which kept the whole runtime package out of git while local tests still passed
 - narrowed the ignore rule to root-only `/runtime/` so `internal/runtime/*` is tracked correctly for CI and future commits
+- validated the fixed pipeline with `workflow_dispatch` and found a Linux-only uninstall test bug where service deregistration failures were silently ignored
+- aligned Linux service-host uninstall behavior with the existing uninstall partial-report contract by surfacing `disable-service` failures instead of swallowing them
