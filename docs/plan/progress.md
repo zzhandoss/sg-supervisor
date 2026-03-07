@@ -105,3 +105,4 @@
 - narrowed the ignore rule to root-only `/runtime/` so `internal/runtime/*` is tracked correctly for CI and future commits
 - validated the fixed pipeline with `workflow_dispatch` and found a Linux-only uninstall test bug where service deregistration failures were silently ignored
 - aligned Linux service-host uninstall behavior with the existing uninstall partial-report contract by surfacing `disable-service` failures instead of swallowing them
+- validated the first real tag build for `v0.1.1` through to the publish job and traced the remaining failure to `gh release` being invoked without an explicit repository in a non-checkout publish job
