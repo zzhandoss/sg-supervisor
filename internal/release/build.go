@@ -25,7 +25,7 @@ func Build(root, version string, report distribution.Report) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	checksumsPath, err := writeChecksums(releaseDir, artifactPath)
+	checksumsPath, err := writeChecksums(releaseDir, version, report.Platform, artifactPath)
 	if err != nil {
 		return Report{}, err
 	}

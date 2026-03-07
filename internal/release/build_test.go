@@ -32,6 +32,12 @@ func TestBuildLinuxRelease(t *testing.T) {
 	if !strings.HasSuffix(report.ArtifactPath, "school-gate-installer-v1.2.3-linux-x64.tar.gz") {
 		t.Fatalf("unexpected artifact path: %s", report.ArtifactPath)
 	}
+	if !strings.HasSuffix(report.ChecksumsPath, "school-gate-installer-v1.2.3-linux-x64-SHA256SUMS.txt") {
+		t.Fatalf("unexpected checksums path: %s", report.ChecksumsPath)
+	}
+	if !strings.HasSuffix(report.MetadataPath, "school-gate-installer-v1.2.3-linux-x64-release.json") {
+		t.Fatalf("unexpected metadata path: %s", report.MetadataPath)
+	}
 	if _, err := os.Stat(report.ChecksumsPath); err != nil {
 		t.Fatalf("expected checksums file: %v", err)
 	}
@@ -57,6 +63,12 @@ func TestBuildWindowsReleaseFallsBackToInputsZip(t *testing.T) {
 	}
 	if !strings.HasSuffix(report.ArtifactPath, "school-gate-installer-v1.2.3-windows-x64.zip") {
 		t.Fatalf("unexpected artifact path: %s", report.ArtifactPath)
+	}
+	if !strings.HasSuffix(report.ChecksumsPath, "school-gate-installer-v1.2.3-windows-x64-SHA256SUMS.txt") {
+		t.Fatalf("unexpected checksums path: %s", report.ChecksumsPath)
+	}
+	if !strings.HasSuffix(report.MetadataPath, "school-gate-installer-v1.2.3-windows-x64-release.json") {
+		t.Fatalf("unexpected metadata path: %s", report.MetadataPath)
 	}
 	if len(report.Warnings) == 0 {
 		t.Fatalf("expected fallback warning")

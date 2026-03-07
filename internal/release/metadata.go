@@ -6,18 +6,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"sg-supervisor/internal/distribution"
 )
 
-func writeChecksums(releaseDir, artifactPath string) (string, error) {
+func writeChecksums(releaseDir, version, platform, artifactPath string) (string, error) {
 	data, err := os.ReadFile(artifactPath)
 	if err != nil {
 		return "", err
 	}
 	sum := sha256.Sum256(data)
 	content := hex.EncodeToString(sum[:]) + "  " + filepath.Base(artifactPath) + "\n"
-	path := filepath.Join(releaseDir, "SHA256SUMS.txt")
+	path := filepath.Join(releaseDir, releaseSupportFileName(version, platform, "SHA256SUMS.txt"))
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return "", err
 	}
@@ -39,9 +40,14 @@ func writeMetadata(releaseDir, version string, report distribution.Report, artif
 		return "", err
 	}
 	data = append(data, '\n')
-	path := filepath.Join(releaseDir, "release.json")
+	path := filepath.Join(releaseDir, releaseSupportFileName(version, report.Platform, "release.json"))
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return "", err
 	}
 	return path, nil
+}
+
+func releaseSupportFileName(version, platform, suffix string) string {
+	suffix = strings.TrimPrefix(suffix, "-")
+	return "school-gate-installer-v" + version + "-" + platform + "-x64-" + suffix
 }

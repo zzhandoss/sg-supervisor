@@ -106,3 +106,5 @@
 - validated the fixed pipeline with `workflow_dispatch` and found a Linux-only uninstall test bug where service deregistration failures were silently ignored
 - aligned Linux service-host uninstall behavior with the existing uninstall partial-report contract by surfacing `disable-service` failures instead of swallowing them
 - validated the first real tag build for `v0.1.1` through to the publish job and traced the remaining failure to `gh release` being invoked without an explicit repository in a non-checkout publish job
+- validated the next real tag build for `v0.1.2` through to release asset upload and traced the remaining failure to duplicate per-platform support filenames like `SHA256SUMS.txt` and `release.json`
+- updated release support asset naming so checksums and metadata are unique per platform and can coexist in one GitHub release upload
