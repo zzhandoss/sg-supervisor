@@ -2,7 +2,7 @@
 
 ## Current
 
-- `ready` Validate the first real GitHub Actions tag release and tighten any platform-specific pipeline gaps.
+- `ready` Remove `actions/setup-go` cache warnings by either committing a real `go.sum` or disabling cache in the workflow while the module stays dependency-free.
 
 ## Next
 
