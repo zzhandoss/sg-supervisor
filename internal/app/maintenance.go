@@ -1,0 +1,161 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"path/filepath"
+
+	"sg-supervisor/internal/control"
+	"sg-supervisor/internal/maintenance"
+	"sg-supervisor/internal/servicehost"
+)
+
+func (a *App) InstallPackage(ctx context.Context, packageID, binaryPath string) (control.InstallReport, error) {
+	active, err := a.ApplyPackage(ctx, packageID)
+	if err != nil {
+		return control.InstallReport{}, err
+	}
+	rendered, err := a.renderServiceHost(ctx, binaryPath)
+	if err != nil {
+		return control.InstallReport{}, err
+	}
+	if err := servicehost.ExecuteInstall(ctx, rendered.Plan, a.runner); err != nil {
+		return control.InstallReport{}, err
+	}
+	if err := a.refreshPackagingManifests(ctx, rendered, packageID, active.PackageID); err != nil {
+		return control.InstallReport{}, err
+	}
+	serviceHost := mapServiceHostArtifacts(rendered)
+	return control.InstallReport{
+		PackageID:       packageID,
+		ActivePackageID: active.PackageID,
+		ServiceName:     serviceHost.ServiceName,
+		WrittenFiles:    serviceHost.WrittenFiles,
+		InstallHints:    serviceHost.InstallHints,
+	}, nil
+}
+
+func (a *App) Repair(ctx context.Context, binaryPath string) (control.RepairReport, error) {
+	if err := a.EnsureBootstrap(ctx); err != nil {
+		return control.RepairReport{}, err
+	}
+	rendered, err := a.renderServiceHost(ctx, binaryPath)
+	if err != nil {
+		return control.RepairReport{}, err
+	}
+	if err := servicehost.ExecuteRepair(ctx, rendered.Plan, a.runner); err != nil {
+		return control.RepairReport{}, err
+	}
+	serviceHost := mapServiceHostArtifacts(rendered)
+	active, err := a.updates.Active(ctx)
+	if err != nil {
+		return control.RepairReport{}, err
+	}
+	if err := a.refreshPackagingManifests(ctx, rendered, active.PackageID, active.PackageID); err != nil {
+		return control.RepairReport{}, err
+	}
+	ensured := []string{
+		a.layout.InstallDir,
+		a.layout.ConfigDir,
+		a.layout.DataDir,
+		a.layout.LogsDir,
+		a.layout.LicensesDir,
+		a.layout.BackupsDir,
+		a.layout.RuntimeDir,
+		a.layout.UpdatesDir,
+		filepath.Join(a.layout.ConfigDir, "services.json"),
+		filepath.Join(a.layout.ConfigDir, "supervisor.json"),
+	}
+	return control.RepairReport{
+		EnsuredPaths:        ensured,
+		ServiceArtifacts:    serviceHost.WrittenFiles,
+		ActivePackageID:     active.PackageID,
+		NeedsPackageInstall: active.PackageID == "",
+	}, nil
+}
+
+func (a *App) Uninstall(ctx context.Context, mode string) (control.UninstallReport, error) {
+	report := maintenance.UninstallReport{Mode: mode}
+	rendered, err := a.renderServiceHost(ctx, "")
+	if err != nil {
+		report.Issues = append(report.Issues, maintenance.Issue{
+			Step:     "render-service-host",
+			Severity: "error",
+			Message:  err.Error(),
+		})
+	}
+	runningServices := a.runtime.RunningServiceNames()
+	if len(runningServices) > 0 {
+		if err := a.runtime.StopMany(runningServices); err != nil {
+			report.Issues = append(report.Issues, maintenance.Issue{
+				Step:     "stop-services",
+				Severity: "error",
+				Message:  err.Error(),
+			})
+		}
+		if err := a.runtime.WaitForStopped(ctx, runningServices); err != nil {
+			report.Issues = append(report.Issues, maintenance.Issue{
+				Step:     "wait-for-stop",
+				Severity: "error",
+				Message:  err.Error(),
+			})
+		}
+	}
+	if err == nil {
+		if uninstallErr := servicehost.ExecuteUninstall(ctx, rendered.Plan, a.runner); uninstallErr != nil {
+			report.Issues = append(report.Issues, maintenance.Issue{
+				Step:     "service-deregistration",
+				Severity: "error",
+				Message:  uninstallErr.Error(),
+			})
+		}
+	}
+
+	fsReport, uninstallErr := maintenance.ExecuteUninstall(a.layout, mode)
+	report.Mode = fsReport.Mode
+	report.Completed = fsReport.Completed
+	report.RemovedPaths = fsReport.RemovedPaths
+	report.KeptPaths = fsReport.KeptPaths
+	report.Issues = append(report.Issues, fsReport.Issues...)
+	if uninstallErr != nil {
+		report.Issues = append(report.Issues, maintenance.Issue{
+			Step:     "remove-managed-paths",
+			Severity: "error",
+			Message:  uninstallErr.Error(),
+		})
+	}
+	report.StoppedServices = append(report.StoppedServices, runningServices...)
+	if err == nil {
+		report.UninstallHints = mapServiceHostArtifacts(rendered).UninstallHints
+	}
+
+	controlReport := control.UninstallReport{
+		Mode:            report.Mode,
+		Completed:       report.Completed,
+		RemovedPaths:    report.RemovedPaths,
+		KeptPaths:       report.KeptPaths,
+		StoppedServices: report.StoppedServices,
+		UninstallHints:  report.UninstallHints,
+		Issues:          controlIssues(report.Issues),
+	}
+	if uninstallErr != nil {
+		return controlReport, fmt.Errorf("uninstall failed with issues: %w", uninstallErr)
+	}
+	if len(report.Issues) > 0 {
+		return controlReport, errors.New("uninstall completed with issues")
+	}
+	return controlReport, nil
+}
+
+func controlIssues(issues []maintenance.Issue) []control.Issue {
+	result := make([]control.Issue, 0, len(issues))
+	for _, issue := range issues {
+		result = append(result, control.Issue{
+			Step:     issue.Step,
+			Severity: issue.Severity,
+			Message:  issue.Message,
+		})
+	}
+	return result
+}

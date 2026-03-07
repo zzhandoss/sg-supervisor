@@ -1,0 +1,105 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, with or without v prefix"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            runner: ubuntu-latest
+            binary_name: sg-supervisor
+          - platform: windows
+            runner: windows-latest
+            binary_name: sg-supervisor.exe
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Normalize version
+        id: version
+        shell: bash
+        run: |
+          RAW="${{ github.event.inputs.version }}"
+          if [ -z "$RAW" ]; then
+            RAW="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${RAW#v}"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install WiX on Windows
+        if: matrix.platform == 'windows'
+        shell: powershell
+        run: choco install wixtoolset --no-progress -y
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build supervisor binary
+        shell: bash
+        run: |
+          mkdir -p .artifacts/${{ matrix.platform }}
+          go build -o ".artifacts/${{ matrix.platform }}/${{ matrix.binary_name }}" ./cmd/sg-supervisor
+
+      - name: Build versioned release
+        shell: bash
+        run: |
+          go run ./cmd/sg-supervisor build-release \
+            --root . \
+            --platform "${{ matrix.platform }}" \
+            --version "${{ steps.version.outputs.value }}" \
+            --binary ".artifacts/${{ matrix.platform }}/${{ matrix.binary_name }}"
+
+      - name: Upload platform release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: releases/v${{ steps.version.outputs.value }}/${{ matrix.platform }}
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Normalize version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .release-artifacts
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="v${{ steps.version.outputs.value }}"
+          mapfile -t FILES < <(find .release-artifacts -type f | sort)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --title "$TAG" --notes ""
+          fi

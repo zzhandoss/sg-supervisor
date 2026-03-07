@@ -1,0 +1,11 @@
+bin/
+dist/
+coverage.out
+*.log
+*.exe
+*.test
+runtime/
+.idea/
+.artifacts/
+build/
+releases/
