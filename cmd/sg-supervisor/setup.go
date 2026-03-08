@@ -14,6 +14,7 @@ func runSetSetupField(ctx context.Context, args []string) error {
 	root := fs.String("root", ".", "supervisor root")
 	key := fs.String("key", "", "setup field key")
 	status := fs.String("status", "", "setup field status")
+	value := fs.String("value", "", "optional setup field value")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func runSetSetupField(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	setupStatus, err := supervisor.UpdateSetupField(ctx, *key, *status)
+	setupStatus, err := supervisor.UpdateSetupField(ctx, *key, *status, *value)
 	if err != nil {
 		return err
 	}

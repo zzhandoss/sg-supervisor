@@ -23,12 +23,13 @@ func (s *Server) handleSetupFieldUpdate(w http.ResponseWriter, r *http.Request) 
 	var request struct {
 		Key    string `json:"key"`
 		Status string `json:"status"`
+		Value  string `json:"value,omitempty"`
 	}
 	if err := decodeBody(r, &request); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
-	report, err := s.deps.UpdateSetupField(r.Context(), request.Key, request.Status)
+	report, err := s.deps.UpdateSetupField(r.Context(), request.Key, request.Status, request.Value)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
@@ -36,4 +37,4 @@ func (s *Server) handleSetupFieldUpdate(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": report})
 }
 
-type SetupFieldUpdater func(context.Context, string, string) (SetupStatus, error)
+type SetupFieldUpdater func(context.Context, string, string, string) (SetupStatus, error)

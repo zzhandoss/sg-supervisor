@@ -19,6 +19,7 @@ type App struct {
 	layout  config.Layout
 	cfg     config.SupervisorConfig
 	license *license.Store
+	product *config.ProductStore
 	runtime *runtime.Manager
 	setup   *setup.Store
 	updates *updates.Store
@@ -31,15 +32,25 @@ func New(root string) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	product := config.NewProductStore(layout)
+	if err := product.Ensure(); err != nil {
+		return nil, err
+	}
+	productCfg, err := product.Load()
+	if err != nil {
+		return nil, err
+	}
 	catalog, err := config.LoadServiceCatalog(layout)
 	if err != nil {
 		return nil, err
 	}
+	catalog = config.ApplyProductConfig(layout, catalog, productCfg)
 	return &App{
 		root:    root,
 		layout:  layout,
 		cfg:     cfg,
 		license: license.NewStore(layout, cfg),
+		product: product,
 		runtime: runtime.NewManager(catalog),
 		setup:   setup.NewStore(layout),
 		updates: updates.NewStore(layout, cfg),
@@ -57,7 +68,13 @@ func (a *App) EnsureBootstrap(ctx context.Context) error {
 	if err := config.EnsureServiceCatalog(a.layout); err != nil {
 		return err
 	}
-	return a.setup.Ensure(ctx)
+	if err := a.product.Ensure(); err != nil {
+		return err
+	}
+	if err := a.setup.Ensure(ctx); err != nil {
+		return err
+	}
+	return a.syncRuntimeConfig()
 }
 
 func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {

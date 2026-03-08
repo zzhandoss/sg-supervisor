@@ -110,3 +110,6 @@
 - updated release support asset naming so checksums and metadata are unique per platform and can coexist in one GitHub release upload
 - completed the first successful end-to-end tag release with `v0.1.3`, including Linux and Windows build jobs, publish job, and a populated GitHub release with per-platform installer assets, metadata, and checksums
 - disabled `actions/setup-go` caching in the release workflow so dependency-free module builds stop emitting misleading `go.sum` cache warnings
+- added a supervisor-managed product-config store and generated runtime env file for operator-entered product values
+- wired the optional `telegram-bot` setup field to persist `TELEGRAM_BOT_TOKEN`, regenerate `runtime/config/product.env`, and overlay the bot env in the in-memory service catalog without overwriting `services.json`
+- extended the existing setup API/CLI contract with an optional `value` payload so setup state and real product config can be updated together

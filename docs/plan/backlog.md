@@ -4,9 +4,9 @@
 
 ## Next
 
-- Wire persisted optional setup fields to concrete product config/env generation once field contracts are finalized.
 - Add local web UI assets for browser-facing control center flows.
 - Add similar partial-report/error contracts for install and repair if maintenance execution needs the same operator visibility.
+- Extend the product-config store beyond `TELEGRAM_BOT_TOKEN` as more owner-approved runtime field contracts are finalized.
 
 ## Later
 

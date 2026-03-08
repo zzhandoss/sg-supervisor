@@ -22,12 +22,18 @@ func (a *App) SetupStatus(ctx context.Context) (control.SetupStatus, error) {
 	return mapSetupStatus(setup.Summarize(state, licenseStatus.Valid)), nil
 }
 
-func (a *App) UpdateSetupField(ctx context.Context, key, status string) (control.SetupStatus, error) {
+func (a *App) UpdateSetupField(ctx context.Context, key, status, value string) (control.SetupStatus, error) {
 	if err := a.EnsureBootstrap(ctx); err != nil {
+		return control.SetupStatus{}, err
+	}
+	if err := a.applySetupFieldValue(key, status, value); err != nil {
 		return control.SetupStatus{}, err
 	}
 	state, err := a.setup.UpdateField(ctx, key, status)
 	if err != nil {
+		return control.SetupStatus{}, err
+	}
+	if err := a.syncRuntimeConfig(); err != nil {
 		return control.SetupStatus{}, err
 	}
 	licenseStatus, err := a.license.Status(ctx)

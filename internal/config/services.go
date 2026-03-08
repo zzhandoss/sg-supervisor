@@ -149,6 +149,23 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 	}
 }
 
+func ApplyProductConfig(layout Layout, catalog ServiceCatalog, product ProductConfig) ServiceCatalog {
+	services := make([]ServiceSpec, 0, len(catalog.Services))
+	for _, service := range catalog.Services {
+		current := service
+		current.Env = cloneEnv(service.Env)
+		current.Env["SG_PRODUCT_ENV_FILE"] = ProductEnvFile(layout)
+		if current.Name == "bot" {
+			delete(current.Env, "TELEGRAM_BOT_TOKEN")
+			if product.TelegramBotToken != "" {
+				current.Env["TELEGRAM_BOT_TOKEN"] = product.TelegramBotToken
+			}
+		}
+		services = append(services, current)
+	}
+	return ServiceCatalog{Services: services}
+}
+
 func bundledNodePath(layout Layout) string {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(layout.InstallDir, "runtime", "node", "node.exe")
@@ -187,4 +204,15 @@ func adapterServiceEnv(layout Layout) map[string]string {
 	env["LOG_DIR"] = filepath.Join(layout.LogsDir, "dahua-terminal-adapter")
 	env["SQLITE_PATH"] = filepath.Join(layout.DataDir, "dahua-terminal-adapter", "dahua-adapter.db")
 	return env
+}
+
+func cloneEnv(source map[string]string) map[string]string {
+	if len(source) == 0 {
+		return map[string]string{}
+	}
+	target := make(map[string]string, len(source))
+	for key, value := range source {
+		target[key] = value
+	}
+	return target
 }

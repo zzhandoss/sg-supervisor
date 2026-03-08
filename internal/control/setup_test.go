@@ -19,7 +19,10 @@ func TestSetupFieldUpdateHandler(t *testing.T) {
 		ImportPackageManifest:     func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
 		ImportPackageBundle:       func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
 		ApplyPackage:              func(context.Context, string) (ActivePackageRecord, error) { return ActivePackageRecord{}, nil },
-		UpdateSetupField: func(context.Context, string, string) (SetupStatus, error) {
+		UpdateSetupField: func(_ context.Context, key, status, value string) (SetupStatus, error) {
+			if key != "telegram-bot" || status != "completed" || value != "token-123" {
+				t.Fatalf("unexpected setup update payload: %s %s %s", key, status, value)
+			}
 			return SetupStatus{Complete: true}, nil
 		},
 		InstallPackage:             func(context.Context, string, string) (InstallReport, error) { return InstallReport{}, nil },
@@ -29,7 +32,7 @@ func TestSetupFieldUpdateHandler(t *testing.T) {
 		ValidateManifest:           func([]byte) error { return nil },
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/setup/fields", strings.NewReader(`{"key":"telegram-bot","status":"completed"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/setup/fields", strings.NewReader(`{"key":"telegram-bot","status":"completed","value":"token-123"}`))
 	response := httptest.NewRecorder()
 
 	server.handleSetupFieldUpdate(response, request)
