@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -24,9 +23,7 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
-	if len(args) == 0 {
-		return errors.New("expected command: serve | status | set-recipe | list-versions | build-local-release | issue-license")
-	}
+	args = normalizeArgs(args)
 	switch args[0] {
 	case "serve":
 		return runServe(ctx, args[1:])
@@ -50,10 +47,21 @@ func runServe(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Release Panel started on http://%s\n", state.ListenAddress)
 	server := releasepanelhttp.NewServer(state.ListenAddress, service)
 	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return server.Run(serverCtx)
+}
+
+func normalizeArgs(args []string) []string {
+	if len(args) == 0 {
+		return []string{"serve"}
+	}
+	if len(args) > 0 && len(args[0]) > 0 && args[0][0] == '-' {
+		return append([]string{"serve"}, args...)
+	}
+	return args
 }
 
 func runStatus(ctx context.Context, args []string) error {
