@@ -2,8 +2,6 @@
 
 ## Current
 
-- `ready` Remove `actions/setup-go` cache warnings by either committing a real `go.sum` or disabling cache in the workflow while the module stays dependency-free.
-
 ## Next
 
 - Wire persisted optional setup fields to concrete product config/env generation once field contracts are finalized.

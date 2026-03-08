@@ -109,3 +109,4 @@
 - validated the next real tag build for `v0.1.2` through to release asset upload and traced the remaining failure to duplicate per-platform support filenames like `SHA256SUMS.txt` and `release.json`
 - updated release support asset naming so checksums and metadata are unique per platform and can coexist in one GitHub release upload
 - completed the first successful end-to-end tag release with `v0.1.3`, including Linux and Windows build jobs, publish job, and a populated GitHub release with per-platform installer assets, metadata, and checksums
+- disabled `actions/setup-go` caching in the release workflow so dependency-free module builds stop emitting misleading `go.sum` cache warnings
