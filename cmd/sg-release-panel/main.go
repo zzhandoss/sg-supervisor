@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"sg-supervisor/internal/releasepanel"
 	"sg-supervisor/internal/releasepanelhttp"
@@ -47,6 +48,11 @@ func runServe(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	owner, err := service.AcquireOwner("serve")
+	if err != nil {
+		return err
+	}
+	defer owner.Release()
 	fmt.Printf("Release Panel started on http://%s\n", state.ListenAddress)
 	server := releasepanelhttp.NewServer(state.ListenAddress, service)
 	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -127,11 +133,20 @@ func runBuildLocalRelease(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	owner, err := service.AcquireOwner("build-local-release")
+	if err != nil {
+		return err
+	}
+	defer owner.Release()
 	job, err := service.StartLocalRelease(ctx)
 	if err != nil {
 		return err
 	}
-	return printJSON(job)
+	finalJob, err := waitForJob(ctx, service, job.ID)
+	if err != nil {
+		return err
+	}
+	return printJSON(finalJob)
 }
 
 func runIssueLicense(ctx context.Context, args []string) error {
@@ -222,4 +237,32 @@ func splitCSV(value string) []string {
 		result = append(result, current)
 	}
 	return result
+}
+
+func waitForJob(ctx context.Context, service *releasepanel.Service, jobID string) (releasepanel.Job, error) {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		status, err := service.Status(ctx)
+		if err != nil {
+			return releasepanel.Job{}, err
+		}
+		for _, job := range status.Jobs {
+			if job.ID != jobID {
+				continue
+			}
+			if job.Status == releasepanel.JobStatusQueued || job.Status == releasepanel.JobStatusRunning {
+				break
+			}
+			if job.Status == releasepanel.JobStatusFailed {
+				return job, fmt.Errorf("%s", job.Error)
+			}
+			return job, nil
+		}
+		select {
+		case <-ctx.Done():
+			return releasepanel.Job{}, ctx.Err()
+		case <-ticker.C:
+		}
+	}
 }

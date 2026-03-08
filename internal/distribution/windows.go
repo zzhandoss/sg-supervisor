@@ -1,6 +1,7 @@
 package distribution
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,14 +34,13 @@ func buildWindows(root string, stage packaging.AssembleReport) (Report, error) {
 		OutputDir:      outputDir,
 		GeneratedFiles: []string{wxsPath, scriptPath},
 	}
-	candlePath, candleErr := exec.LookPath("candle.exe")
-	lightPath, lightErr := exec.LookPath("light.exe")
-	if candleErr != nil || lightErr != nil {
-		report.Warnings = append(report.Warnings, "WiX toolchain was not found locally; generated Product.wxs and build-msi.ps1 only")
+	wixPath, err := findWiXExecutable()
+	if err != nil {
+		report.Warnings = append(report.Warnings, "WiX 6 CLI was not found locally; generated Product.wxs and build-msi.ps1 only")
 		return report, nil
 	}
 	artifactPath := filepath.Join(outputDir, "school-gate-windows-x64.msi")
-	command := exec.Command("powershell.exe", "-ExecutionPolicy", "Bypass", "-File", scriptPath, "-CandlePath", candlePath, "-LightPath", lightPath, "-OutputPath", artifactPath)
+	command := exec.Command(wixPath, "build", wxsPath, "-o", artifactPath)
 	command.Dir = outputDir
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -55,17 +55,29 @@ func buildWindows(root string, stage packaging.AssembleReport) (Report, error) {
 func renderWiXBuildScript() string {
 	return strings.Join([]string{
 		"param(",
-		"  [Parameter(Mandatory=$true)][string]$CandlePath,",
-		"  [Parameter(Mandatory=$true)][string]$LightPath,",
+		"  [Parameter(Mandatory=$true)][string]$WixPath,",
 		"  [Parameter(Mandatory=$true)][string]$OutputPath",
 		")",
 		"$ErrorActionPreference = 'Stop'",
 		"$root = Split-Path -Parent $MyInvocation.MyCommand.Path",
 		"$wxs = Join-Path $root 'Product.wxs'",
-		"$wixobj = Join-Path $root 'Product.wixobj'",
-		"& $CandlePath -nologo -arch x64 $wxs -out $wixobj",
-		"& $LightPath -nologo $wixobj -o $OutputPath",
+		"& $WixPath build $wxs -o $OutputPath",
 		"Write-Host $OutputPath",
 		"",
 	}, "\n")
+}
+
+func findWiXExecutable() (string, error) {
+	if path, err := exec.LookPath("wix.exe"); err == nil {
+		return path, nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(homeDir, ".dotnet", "tools", "wix.exe")
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	return "", errors.New("wix.exe not found")
 }

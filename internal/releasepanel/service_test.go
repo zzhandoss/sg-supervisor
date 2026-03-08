@@ -7,7 +7,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"sg-supervisor/internal/config"
 )
 
 func TestServiceStatusIncludesGeneratedKeys(t *testing.T) {
@@ -21,6 +24,9 @@ func TestServiceStatusIncludesGeneratedKeys(t *testing.T) {
 	}
 	if !status.Keys.LicenseConfigured || !status.Keys.PackageConfigured {
 		t.Fatalf("expected signing keys to be generated, got %+v", status.Keys)
+	}
+	if status.HostPlatform == "" {
+		t.Fatal("expected host platform in status")
 	}
 }
 
@@ -74,6 +80,8 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 		store:   store,
 		jobs:    NewJobStore(layout),
 		assets:  newFakeAssetSource(t),
+		node:    newFakeNodeSource(t),
+		core:    fakeCoreBuilder{},
 		builder: fakeBinaryBuilder{},
 	}
 	job := Job{ID: "job-1", Type: JobTypeLocalRelease, Status: JobStatusRunning, Recipe: state.Recipe}
@@ -81,8 +89,11 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build local release: %v", err)
 	}
-	if len(report.Reports) != 2 {
-		t.Fatalf("expected two platform reports, got %+v", report)
+	if len(report.Reports) != 1 {
+		t.Fatalf("expected one platform report, got %+v", report)
+	}
+	if len(report.Platforms) != 1 {
+		t.Fatalf("expected one platform entry, got %+v", report.Platforms)
 	}
 	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", "release-set.json")); err != nil {
 		t.Fatalf("expected release-set metadata: %v", err)
@@ -107,11 +118,8 @@ func newFakeAssetSource(t *testing.T) *fakeAssetSource {
 	root := t.TempDir()
 	return &fakeAssetSource{
 		assets: map[string]string{
-			"school-gate-v1.2.0-prebuilt.zip":    writeZipArchive(t, filepath.Join(root, "core.zip"), coreFiles()),
 			"dahua-adapter-v0.2.0-win-x64.zip":   writeZipArchive(t, filepath.Join(root, "adapter-win.zip"), adapterFiles()),
 			"dahua-adapter-v0.2.0-linux-x64.zip": writeZipArchive(t, filepath.Join(root, "adapter-linux.zip"), adapterFiles()),
-			"node-v20.19.0-win-x64.zip":          writeZipArchive(t, filepath.Join(root, "node-win.zip"), map[string]string{"node-v20.19.0-win-x64/node.exe": "node"}),
-			"node-v20.19.0-linux-x64.tar.gz":     writeTarGzArchive(t, filepath.Join(root, "node-linux.tar.gz"), map[string]string{"node-v20.19.0-linux-x64/bin/node": "node"}),
 		},
 	}
 }
@@ -122,6 +130,46 @@ func (s *fakeAssetSource) ListVersions(_ context.Context, _ string) ([]ReleaseVe
 
 func (s *fakeAssetSource) DownloadReleaseAsset(_ context.Context, spec AssetSpec, _ string) (string, error) {
 	return s.assets[spec.Pattern], nil
+}
+
+type fakeNodeSource struct {
+	assets map[string]string
+}
+
+type fakeCoreBuilder struct{}
+
+func (fakeCoreBuilder) BuildInstallTree(_ context.Context, _ Recipe, _ string, workspaceRoot string, _ func(string)) error {
+	layout := config.NewLayout(workspaceRoot)
+	for path, body := range coreFiles() {
+		trimmed := strings.TrimPrefix(path, "school-gate-v1.2.0/")
+		target := filepath.Join(layout.InstallDir, "core", filepath.FromSlash(trimmed))
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func newFakeNodeSource(t *testing.T) *fakeNodeSource {
+	t.Helper()
+	root := t.TempDir()
+	return &fakeNodeSource{
+		assets: map[string]string{
+			"windows": writeZipArchive(t, filepath.Join(root, "node-win.zip"), map[string]string{"node-v20.19.0-win-x64/node.exe": "node"}),
+			"linux":   writeTarGzArchive(t, filepath.Join(root, "node-linux.tar.gz"), map[string]string{"node-v20.19.0-linux-x64/bin/node": "node"}),
+		},
+	}
+}
+
+func (s *fakeNodeSource) ListVersions(_ context.Context) ([]ReleaseVersion, error) {
+	return nil, nil
+}
+
+func (s *fakeNodeSource) Download(_ string, platform, _ string) (string, error) {
+	return s.assets[platform], nil
 }
 
 func writeZipArchive(t *testing.T, path string, files map[string]string) string {

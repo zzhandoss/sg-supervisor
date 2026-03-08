@@ -137,3 +137,8 @@
 - release panel now auto-generates stable license/package signing keypairs, stores owner recipe state, lists upstream repo versions through `gh`, and issues signed offline license files from direct input or activation-request payloads
 - added local release workflow that downloads `school-gate`, `dahua-terminal-adapter`, and Node runtime artifacts, prepares a release workspace with a generated `config/supervisor.json`, cross-builds `sg-supervisor`, and produces local Windows/Linux installer artifacts plus aggregate release-set metadata
 - validated the release-panel slice with `go test ./...` and `go build ./cmd/...`
+- fixed `sg-release-panel` owner-job lifecycle so read-only `status` and other CLI/API calls no longer mark a live local-release job as interrupted
+- introduced explicit owner lease handling for `serve` and `build-local-release`, with interrupted-job recovery only when a stale owner lease is detected
+- changed local release policy to host-native builds only: Windows hosts build Windows installers and Linux hosts build Linux installers
+- surfaced `hostPlatform` in release-panel status and updated the owner UI copy so it no longer promises unsupported cross-platform local builds
+- revalidated the host-native release-panel slice with `go test ./internal/releasepanel ./internal/releasepanelhttp ./cmd/sg-release-panel`, `go build ./cmd/sg-release-panel`, and `go build ./cmd/sg-supervisor`

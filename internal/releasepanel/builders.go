@@ -2,6 +2,7 @@ package releasepanel
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 )
@@ -35,5 +36,11 @@ func (b *GoBinaryBuilder) BuildSupervisor(ctx context.Context, repoRoot, platfor
 		return err
 	}
 	_, err := b.executor.Run(ctx, repoRoot, env, "go", "build", "-o", outputPath, "./cmd/sg-supervisor")
-	return err
+	if err != nil {
+		if output := commandOutput(err); output != "" {
+			return errors.New(output)
+		}
+		return errors.New(err.Error())
+	}
+	return nil
 }

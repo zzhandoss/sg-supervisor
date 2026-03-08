@@ -50,7 +50,10 @@ function syncRecipeInputs(recipe) {
 
 function renderStatus(status) {
   state.status = status;
-  setText("summary", `Repo: ${status.repoRoot || "not set"} | Releases: ${status.releaseDir}`);
+  setText("summary", `Host: ${status.hostPlatform} | Repo: ${status.repoRoot || "not set"} | Releases: ${status.releaseDir}`);
+  setText("build-policy", status.hostPlatform === "windows"
+    ? "This machine builds the Windows installer locally. Build the Linux installer from a Linux host."
+    : "This machine builds the Linux installer locally. Build the Windows installer from a Windows host.");
   if (!state.recipeDirty) {
     syncRecipeInputs(status.recipe || {});
     setRecipeStatus("Recipe is saved and ready for local release.", "saved");
@@ -127,7 +130,7 @@ async function startBuild() {
     return;
   }
   const job = await api("/api/v1/releases/local", { method: "POST", body: "{}" });
-  setText("build-result", `Started local release job ${job.id}.`);
+  setText("build-result", `Started ${state.status?.hostPlatform || "local"} release job ${job.id}.`);
   await refresh();
 }
 

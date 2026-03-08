@@ -53,13 +53,21 @@ func (s *GitHubAssetSource) ListVersions(ctx context.Context, repo string) ([]Re
 }
 
 func (s *GitHubAssetSource) DownloadReleaseAsset(ctx context.Context, spec AssetSpec, targetDir string) (string, error) {
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+	absoluteTargetDir, err := filepath.Abs(targetDir)
+	if err != nil {
 		return "", err
 	}
-	if _, err := s.executor.Run(ctx, targetDir, nil, "gh", "release", "download", spec.Tag, "--repo", spec.Repo, "--pattern", spec.Pattern, "--dir", targetDir, "--clobber"); err != nil {
+	if err := os.MkdirAll(absoluteTargetDir, 0o755); err != nil {
 		return "", err
 	}
-	matches, err := filepath.Glob(filepath.Join(targetDir, spec.Pattern))
+	if _, err := s.executor.Run(ctx, absoluteTargetDir, nil, "gh", "release", "download", spec.Tag, "--repo", spec.Repo, "--pattern", spec.Pattern, "--dir", absoluteTargetDir, "--clobber"); err != nil {
+		output := commandOutput(err)
+		if output != "" {
+			return "", errors.New(output)
+		}
+		return "", err
+	}
+	matches, err := filepath.Glob(filepath.Join(absoluteTargetDir, spec.Pattern))
 	if err != nil {
 		return "", err
 	}

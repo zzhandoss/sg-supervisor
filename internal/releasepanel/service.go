@@ -8,12 +8,16 @@ import (
 )
 
 type Service struct {
-	layout  Layout
-	store   *Store
-	jobs    *JobStore
-	assets  AssetSource
-	builder BinaryBuilder
-	mu      sync.Mutex
+	layout   Layout
+	store    *Store
+	jobs     *JobStore
+	owner    *OwnerStore
+	assets   AssetSource
+	node     NodeSource
+	core     CoreBuilder
+	builder  BinaryBuilder
+	executor Executor
+	mu       sync.Mutex
 }
 
 func NewService(root, repoRoot string) (*Service, error) {
@@ -23,21 +27,26 @@ func NewService(root, repoRoot string) (*Service, error) {
 		return nil, err
 	}
 	jobs := NewJobStore(layout)
-	if err := jobs.RecoverInterrupted(); err != nil {
-		return nil, err
-	}
 	executor := ExecExecutor{}
 	return &Service{
-		layout:  layout,
-		store:   store,
-		jobs:    jobs,
-		assets:  NewGitHubAssetSource(executor),
-		builder: NewGoBinaryBuilder(executor),
+		layout:   layout,
+		store:    store,
+		jobs:     jobs,
+		owner:    NewOwnerStore(layout),
+		assets:   NewGitHubAssetSource(executor),
+		node:     NewNodeDistSource(),
+		core:     NewSchoolGateCoreBuilder(executor, NewGitHubAssetSource(executor)),
+		builder:  NewGoBinaryBuilder(executor),
+		executor: executor,
 	}, nil
 }
 
 func (s *Service) Status(ctx context.Context) (Status, error) {
 	if err := ctx.Err(); err != nil {
+		return Status{}, err
+	}
+	platform, err := hostPlatform()
+	if err != nil {
 		return Status{}, err
 	}
 	state, err := s.store.Load()
@@ -56,6 +65,7 @@ func (s *Service) Status(ctx context.Context) (Status, error) {
 		Root:          s.layout.Root,
 		ListenAddress: state.ListenAddress,
 		RepoRoot:      state.RepoRoot,
+		HostPlatform:  platform,
 		Recipe:        state.Recipe,
 		Keys: KeysStatus{
 			LicensePublicKeyBase64: state.Keys.LicensePublicKeyBase64,
@@ -91,7 +101,7 @@ func (s *Service) ListVersions(ctx context.Context, repo string) ([]ReleaseVersi
 	case "adapter":
 		return s.assets.ListVersions(ctx, RepoAdapter)
 	case "node":
-		return s.assets.ListVersions(ctx, RepoNode)
+		return s.node.ListVersions(ctx)
 	default:
 		return nil, errors.New("unsupported repo")
 	}

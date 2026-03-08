@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -18,6 +19,9 @@ func extractArchive(sourcePath, targetDir string) error {
 	}
 	if strings.HasSuffix(sourcePath, ".tar.gz") {
 		return extractTarGz(sourcePath, targetDir)
+	}
+	if strings.HasSuffix(sourcePath, ".tar.xz") {
+		return extractTarXz(sourcePath, targetDir)
 	}
 	return errors.New("unsupported archive type: " + sourcePath)
 }
@@ -95,6 +99,36 @@ func extractTarGz(sourcePath, targetDir string) error {
 		}
 	}
 	return nil
+}
+
+func extractTarXz(sourcePath, targetDir string) error {
+	tempDir, err := os.MkdirTemp("", "sg-release-panel-tarxz-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tempDir)
+	command := exec.Command("tar", "-xf", sourcePath, "-C", tempDir)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		message := strings.TrimSpace(string(output))
+		if message == "" {
+			message = err.Error()
+		}
+		return errors.New("tar extraction failed: " + message)
+	}
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		return err
+	}
+	prefix := ""
+	if len(entries) == 1 && entries[0].IsDir() {
+		prefix = entries[0].Name()
+	}
+	sourceRoot := tempDir
+	if prefix != "" {
+		sourceRoot = filepath.Join(tempDir, prefix)
+	}
+	return copyDir(sourceRoot, targetDir)
 }
 
 func copyDir(sourceDir, targetDir string) error {

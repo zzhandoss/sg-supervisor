@@ -2,6 +2,9 @@
 
 ## Current
 
+- Validate the Linux local-release path on a real Linux host or VM now that the owner panel build policy is host-native.
+- Finish the Windows local-release path end-to-end and confirm the final `.msi` artifact plus owner-facing output paths.
+
 ## Next
 
 - Harden the local release workflow against malformed upstream `school-gate` prebuilt bundles and surface clearer owner-facing remediation guidance.

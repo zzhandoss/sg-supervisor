@@ -10,7 +10,6 @@ import (
 )
 
 type WorkspaceAssets struct {
-	CorePath    string
 	AdapterPath string
 	NodePath    string
 }
@@ -18,9 +17,6 @@ type WorkspaceAssets struct {
 func prepareWorkspace(root, platform string, state State, assets WorkspaceAssets) error {
 	layout := config.NewLayout(root)
 	if err := config.EnsureLayout(layout); err != nil {
-		return err
-	}
-	if err := extractArchive(assets.CorePath, filepath.Join(layout.InstallDir, "core")); err != nil {
 		return err
 	}
 	if err := extractArchive(assets.AdapterPath, filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter")); err != nil {

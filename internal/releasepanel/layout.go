@@ -14,6 +14,7 @@ type Layout struct {
 	LicensesDir   string
 	ReleasesDir   string
 	StatePath     string
+	OwnerPath     string
 }
 
 func NewLayout(root string) Layout {
@@ -26,6 +27,7 @@ func NewLayout(root string) Layout {
 		LicensesDir:   filepath.Join(root, "licenses"),
 		ReleasesDir:   filepath.Join(root, "releases"),
 		StatePath:     filepath.Join(root, "config", "release-panel.json"),
+		OwnerPath:     filepath.Join(root, "config", "owner.json"),
 	}
 }
 

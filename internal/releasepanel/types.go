@@ -48,6 +48,7 @@ type Status struct {
 	Root           string                `json:"root"`
 	ListenAddress  string                `json:"listenAddress"`
 	RepoRoot       string                `json:"repoRoot"`
+	HostPlatform   string                `json:"hostPlatform"`
 	Recipe         Recipe                `json:"recipe"`
 	Keys           KeysStatus            `json:"keys"`
 	Jobs           []Job                 `json:"jobs"`

@@ -9,3 +9,5 @@ coverage.out
 .artifacts/
 build/
 releases/
+.release-panel/
+.tmp/
