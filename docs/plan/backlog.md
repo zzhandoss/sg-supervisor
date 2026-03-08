@@ -3,7 +3,7 @@
 ## Current
 
 - Validate the Linux local-release path on a real Linux host or VM now that the owner panel build policy is host-native.
-- Finish the Windows local-release path end-to-end and confirm the final `.msi` artifact plus owner-facing output paths.
+- Measure a fresh Windows owner `build-local-release` run after runtime-only payload filtering to confirm the expected improvement in local release time.
 
 ## Next
 

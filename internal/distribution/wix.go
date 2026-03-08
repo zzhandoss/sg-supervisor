@@ -7,10 +7,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 func renderWiXSource(stageDir string) string {
-	tree := buildWiXTree(stageDir)
+	stageRoot := stageDir
+	if absoluteStageDir, err := filepath.Abs(stageDir); err == nil {
+		stageRoot = absoluteStageDir
+	}
+	tree := buildWiXTree(stageRoot)
 	return strings.Join([]string{
 		`<?xml version="1.0" encoding="UTF-8"?>`,
 		`<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">`,
@@ -19,7 +24,7 @@ func renderWiXSource(stageDir string) string {
 		`    <MediaTemplate EmbedCab="yes" />`,
 		`    <StandardDirectory Id="ProgramFiles64Folder">`,
 		`      <Directory Id="INSTALLFOLDER" Name="School Gate">`,
-		renderWiXTree(tree, stageDir, "        "),
+		renderWiXTree(tree, stageRoot, "        "),
 		`      </Directory>`,
 		`    </StandardDirectory>`,
 		`    <Feature Id="MainFeature" Title="School Gate" Level="1">`,
@@ -46,6 +51,17 @@ func buildWiXTree(stageDir string) *wiXNode {
 		relativePath, relErr := filepath.Rel(stageDir, path)
 		if relErr != nil {
 			return relErr
+		}
+		if shouldSkipWiXPath(relativePath, info.IsDir()) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !info.IsDir() {
+			if _, ok := resolveWiXSourcePath(path); !ok {
+				return nil
+			}
 		}
 		parts := strings.Split(filepath.ToSlash(relativePath), "/")
 		node := root
@@ -78,9 +94,13 @@ func renderWiXTreeWithPath(node *wiXNode, stageDir, basePath, indent string) str
 	for _, relativePath := range files {
 		componentID := wiXID("cmp_" + relativePath)
 		fileID := wiXID("fil_" + relativePath)
+		sourcePath, ok := resolveWiXSourcePath(filepath.Join(stageDir, filepath.FromSlash(relativePath)))
+		if !ok {
+			continue
+		}
 		lines = append(lines,
 			indent+`<Component Id="`+componentID+`" Guid="`+wiXGUID(relativePath)+`">`,
-			indent+`  <File Id="`+fileID+`" Source="`+filepath.ToSlash(filepath.Join(stageDir, filepath.FromSlash(relativePath)))+`" KeyPath="yes" />`,
+			indent+`  <File Id="`+fileID+`" Source="`+sourcePath+`" KeyPath="yes" />`,
 			indent+`</Component>`,
 		)
 	}
@@ -125,8 +145,22 @@ func renderWiXRefs(node *wiXNode, lines *[]string) {
 }
 
 func wiXID(value string) string {
-	replacer := strings.NewReplacer("\\", "_", "/", "_", "-", "_", ".", "_", " ", "_", ":", "_")
-	return replacer.Replace(value)
+	const maxPrefixLen = 24
+	var builder strings.Builder
+	builder.Grow(maxPrefixLen)
+	for _, runeValue := range value {
+		if builder.Len() >= maxPrefixLen {
+			break
+		}
+		switch {
+		case unicode.IsLetter(runeValue), unicode.IsDigit(runeValue), runeValue == '_', runeValue == '.':
+			builder.WriteRune(unicode.ToLower(runeValue))
+		default:
+			builder.WriteByte('_')
+		}
+	}
+	sum := sha1.Sum([]byte(value))
+	return "id_" + builder.String() + "_" + strings.ToLower(hex.EncodeToString(sum[:6]))
 }
 
 func wiXGUID(value string) string {
@@ -139,4 +173,14 @@ func wiXGUID(value string) string {
 		hexValue[16:20],
 		hexValue[20:32],
 	}, "-")
+}
+
+func resolveWiXSourcePath(path string) (string, bool) {
+	if resolvedPath, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolvedPath
+	}
+	if _, err := os.Stat(path); err != nil {
+		return "", false
+	}
+	return filepath.ToSlash(path), true
 }

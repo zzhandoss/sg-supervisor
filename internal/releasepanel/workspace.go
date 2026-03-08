@@ -22,7 +22,13 @@ func prepareWorkspace(root, platform string, state State, assets WorkspaceAssets
 	if err := extractArchive(assets.AdapterPath, filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter")); err != nil {
 		return err
 	}
+	if err := pruneRuntimeTree(filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter")); err != nil {
+		return err
+	}
 	if err := extractArchive(assets.NodePath, filepath.Join(layout.InstallDir, "runtime", "node")); err != nil {
+		return err
+	}
+	if err := prepareNodeRuntime(filepath.Join(layout.InstallDir, "runtime", "node"), platform); err != nil {
 		return err
 	}
 	if err := writeSupervisorConfig(layout.ConfigFile, state); err != nil {

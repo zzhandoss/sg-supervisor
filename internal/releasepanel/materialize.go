@@ -7,13 +7,23 @@ import (
 )
 
 func copyMaterializedDir(sourceDir, targetDir string) error {
-	return copyMaterializedPath(sourceDir, targetDir, map[string]bool{})
+	return copyMaterializedPath(sourceDir, targetDir, targetDir, map[string]bool{})
 }
 
-func copyMaterializedPath(sourcePath, targetPath string, stack map[string]bool) error {
+func copyMaterializedPath(sourcePath, targetPath, rootTarget string, stack map[string]bool) error {
 	resolvedPath, info, err := resolveMaterializedPath(sourcePath)
 	if err != nil {
 		return err
+	}
+	relativePath := "."
+	if targetPath != rootTarget {
+		relativePath, err = filepath.Rel(rootTarget, targetPath)
+		if err != nil {
+			return err
+		}
+	}
+	if shouldSkipRuntimePath(relativePath, info.IsDir()) {
+		return nil
 	}
 	if info.IsDir() {
 		key := filepath.Clean(resolvedPath)
@@ -30,7 +40,7 @@ func copyMaterializedPath(sourcePath, targetPath string, stack map[string]bool) 
 			return err
 		}
 		for _, entry := range entries {
-			if err := copyMaterializedPath(filepath.Join(resolvedPath, entry.Name()), filepath.Join(targetPath, entry.Name()), stack); err != nil {
+			if err := copyMaterializedPath(filepath.Join(resolvedPath, entry.Name()), filepath.Join(targetPath, entry.Name()), rootTarget, stack); err != nil {
 				return err
 			}
 		}

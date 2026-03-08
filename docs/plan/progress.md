@@ -142,3 +142,7 @@
 - changed local release policy to host-native builds only: Windows hosts build Windows installers and Linux hosts build Linux installers
 - surfaced `hostPlatform` in release-panel status and updated the owner UI copy so it no longer promises unsupported cross-platform local builds
 - revalidated the host-native release-panel slice with `go test ./internal/releasepanel ./internal/releasepanelhttp ./cmd/sg-release-panel`, `go build ./cmd/sg-release-panel`, and `go build ./cmd/sg-supervisor`
+- trimmed Windows bundled Node runtime to a runtime-only payload by removing non-essential Node tooling files from the installer workspace
+- added short Windows build-stage handling plus temporary `subst` mounting for WiX so MSI packaging no longer depends on long workspace paths
+- added runtime-only filtering for install-tree materialization and WiX source generation so dev-only artifacts like `*.d.ts`, `*.map`, docs, and test content are excluded from the installer payload
+- validated the Windows packaging fixes against a real owner workspace by rebuilding `v1.0.6-test` into a final `.msi` artifact at `.release-panel/releases/v1.0.6-test/windows/school-gate-installer-v1.0.6-test-windows-x64.msi`

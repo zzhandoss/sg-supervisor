@@ -39,16 +39,38 @@ func buildWindows(root string, stage packaging.AssembleReport) (Report, error) {
 		report.Warnings = append(report.Warnings, "WiX 6 CLI was not found locally; generated Product.wxs and build-msi.ps1 only")
 		return report, nil
 	}
+	buildStageDir, cleanup, err := prepareWindowsBuildStage(stage.OutputDir)
+	if err != nil {
+		return Report{}, err
+	}
+	defer cleanup()
+	mountedStageDir, unmount, err := mountWindowsBuildStage(buildStageDir)
+	if err != nil {
+		return Report{}, err
+	}
+	defer unmount()
+	buildWXSPath := filepath.Join(outputDir, "Product.build.wxs")
+	if err := os.WriteFile(buildWXSPath, []byte(renderWiXSource(mountedStageDir)), 0o644); err != nil {
+		return Report{}, err
+	}
 	artifactPath := filepath.Join(outputDir, "school-gate-windows-x64.msi")
-	command := exec.Command(wixPath, "build", wxsPath, "-o", artifactPath)
+	absoluteWXSPath, err := filepath.Abs(buildWXSPath)
+	if err != nil {
+		return Report{}, err
+	}
+	absoluteArtifactPath, err := filepath.Abs(artifactPath)
+	if err != nil {
+		return Report{}, err
+	}
+	command := exec.Command(wixPath, "build", absoluteWXSPath, "-o", absoluteArtifactPath)
 	command.Dir = outputDir
 	output, err := command.CombinedOutput()
 	if err != nil {
 		report.Warnings = append(report.Warnings, "MSI build failed: "+strings.TrimSpace(string(output)))
 		return report, nil
 	}
-	report.ArtifactPath = artifactPath
-	report.GeneratedFiles = append(report.GeneratedFiles, artifactPath)
+	report.ArtifactPath = absoluteArtifactPath
+	report.GeneratedFiles = append(report.GeneratedFiles, buildWXSPath, absoluteArtifactPath)
 	return report, nil
 }
 
