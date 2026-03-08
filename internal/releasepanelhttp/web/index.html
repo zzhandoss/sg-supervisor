@@ -19,6 +19,8 @@
 
     <section class="card">
       <h2>Release Recipe</h2>
+      <p class="muted">Save the recipe first. Local release always uses the saved values from this section.</p>
+      <div id="recipe-status" class="status-note">Loading saved recipe.</div>
       <form id="recipe-form" class="grid-form">
         <label>Installer Version<input id="installer-version" name="installerVersion" required></label>
         <label>School Gate Version<input id="school-gate-version" name="schoolGateVersion" list="school-gate-options" required></label>
@@ -31,6 +33,7 @@
           <button type="submit">Save Recipe</button>
         </div>
       </form>
+      <p id="recipe-result" class="result"></p>
       <datalist id="school-gate-options"></datalist>
       <datalist id="adapter-options"></datalist>
       <datalist id="node-options"></datalist>
@@ -38,7 +41,7 @@
 
     <section class="card">
       <h2>Local Release</h2>
-      <p class="muted">Build Windows and Linux installer artifacts locally in the owner release directory.</p>
+      <p class="muted">Build Windows and Linux installer artifacts locally in the owner release directory from the saved recipe above.</p>
       <button id="build-button" type="button">Start Local Release</button>
       <p id="build-result" class="result"></p>
     </section>
@@ -68,15 +71,16 @@
 
     <section class="card">
       <h2>Jobs</h2>
+      <p class="muted">Latest jobs show build progress and the final artifact paths.</p>
       <div id="jobs" class="stack"></div>
     </section>
 
     <section class="card">
       <h2>Issued Licenses</h2>
+      <p class="muted">These are signed offline license files created by this owner panel.</p>
       <div id="licenses" class="stack"></div>
     </section>
   </main>
   <script src="/assets/app.js"></script>
 </body>
 </html>
-

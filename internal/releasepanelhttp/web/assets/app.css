@@ -45,6 +45,26 @@ h1, h2, p {
   color: #4b5563;
 }
 
+.status-note {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.status-note.pending {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.status-note.saved {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
 .card {
   background: rgba(255, 255, 255, .88);
   border: 1px solid rgba(148, 163, 184, .35);
@@ -106,6 +126,39 @@ button.secondary {
   background: #fff;
 }
 
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.badge.running {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge.succeeded {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.failed {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .log-list {
   margin: 0;
   padding-left: 18px;
@@ -116,4 +169,3 @@ button.secondary {
     grid-template-columns: 1fr;
   }
 }
-

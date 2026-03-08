@@ -1,5 +1,6 @@
 const state = {
   status: null,
+  recipeDirty: false,
 };
 
 async function api(path, options = {}) {
@@ -18,13 +19,44 @@ function setText(id, value) {
   document.getElementById(id).textContent = value || "";
 }
 
+function setRecipeStatus(message, kind = "") {
+  const node = document.getElementById("recipe-status");
+  node.textContent = message;
+  node.className = kind ? `status-note ${kind}` : "status-note";
+}
+
+function recipeValues() {
+  return {
+    installerVersion: document.getElementById("installer-version").value.trim(),
+    schoolGateVersion: document.getElementById("school-gate-version").value.trim(),
+    adapterVersion: document.getElementById("adapter-version").value.trim(),
+    nodeVersion: document.getElementById("node-version").value.trim(),
+  };
+}
+
+function sameRecipe(left, right) {
+  return left.installerVersion === (right.installerVersion || "")
+    && left.schoolGateVersion === (right.schoolGateVersion || "")
+    && left.adapterVersion === (right.adapterVersion || "")
+    && left.nodeVersion === (right.nodeVersion || "");
+}
+
+function syncRecipeInputs(recipe) {
+  document.getElementById("installer-version").value = recipe.installerVersion || "";
+  document.getElementById("school-gate-version").value = recipe.schoolGateVersion || "";
+  document.getElementById("adapter-version").value = recipe.adapterVersion || "";
+  document.getElementById("node-version").value = recipe.nodeVersion || "";
+}
+
 function renderStatus(status) {
   state.status = status;
   setText("summary", `Repo: ${status.repoRoot || "not set"} | Releases: ${status.releaseDir}`);
-  document.getElementById("installer-version").value = status.recipe.installerVersion || "";
-  document.getElementById("school-gate-version").value = status.recipe.schoolGateVersion || "";
-  document.getElementById("adapter-version").value = status.recipe.adapterVersion || "";
-  document.getElementById("node-version").value = status.recipe.nodeVersion || "";
+  if (!state.recipeDirty) {
+    syncRecipeInputs(status.recipe || {});
+    setRecipeStatus("Recipe is saved and ready for local release.", "saved");
+  } else {
+    setRecipeStatus("You have unsaved recipe changes. Save them before starting a local release.", "pending");
+  }
   renderJobs(status.jobs || []);
   renderLicenses(status.issuedLicenses || []);
 }
@@ -38,7 +70,10 @@ function renderJobs(jobs) {
     const logs = (job.logs || []).map((entry) => `<li>${entry}</li>`).join("");
     const artifact = job.report?.reports?.map((report) => `<li>${report.platform}: ${report.artifactPath}</li>`).join("") || "";
     article.innerHTML = `
-      <strong>${job.type} · ${job.status}</strong>
+      <div class="job-header">
+        <strong>${job.type}</strong>
+        <span class="badge ${job.status || ""}">${job.status}</span>
+      </div>
       <span class="meta">${job.createdAt}</span>
       ${job.error ? `<span class="meta">${job.error}</span>` : ""}
       ${artifact ? `<ul class="log-list">${artifact}</ul>` : ""}
@@ -56,7 +91,7 @@ function renderLicenses(records) {
     article.className = "license-card";
     article.innerHTML = `
       <strong>${record.licenseId}</strong>
-      <span class="meta">${record.customer || "No customer"} · ${record.mode} · ${record.edition}</span>
+      <span class="meta">${record.customer || "No customer"} | ${record.mode} | ${record.edition}</span>
       <span class="meta">${record.path}</span>
     `;
     root.appendChild(article);
@@ -71,14 +106,11 @@ async function saveRecipe(event) {
   event.preventDefault();
   await api("/api/v1/recipe", {
     method: "POST",
-    body: JSON.stringify({
-      installerVersion: document.getElementById("installer-version").value,
-      schoolGateVersion: document.getElementById("school-gate-version").value,
-      adapterVersion: document.getElementById("adapter-version").value,
-      nodeVersion: document.getElementById("node-version").value,
-    }),
+    body: JSON.stringify(recipeValues()),
   });
-  setText("build-result", "Recipe saved.");
+  state.recipeDirty = false;
+  setText("recipe-result", "Recipe saved.");
+  setRecipeStatus("Recipe is saved and ready for local release.", "saved");
   await refresh();
 }
 
@@ -90,6 +122,10 @@ async function fetchVersions(event) {
 }
 
 async function startBuild() {
+  if (state.recipeDirty) {
+    setText("build-result", "Save the recipe before starting a local release.");
+    return;
+  }
   const job = await api("/api/v1/releases/local", { method: "POST", body: "{}" });
   setText("build-result", `Started local release job ${job.id}.`);
   await refresh();
@@ -118,12 +154,27 @@ async function issueLicense(event) {
   await refresh();
 }
 
+function markRecipeDirty() {
+  if (!state.status) {
+    return;
+  }
+  state.recipeDirty = !sameRecipe(recipeValues(), state.status.recipe || {});
+  if (state.recipeDirty) {
+    setText("recipe-result", "");
+    setRecipeStatus("You have unsaved recipe changes. Save them before starting a local release.", "pending");
+    return;
+  }
+  setRecipeStatus("Recipe matches the saved state.", "saved");
+}
+
 document.getElementById("refresh-button").addEventListener("click", refresh);
 document.getElementById("recipe-form").addEventListener("submit", saveRecipe);
 document.getElementById("build-button").addEventListener("click", startBuild);
 document.getElementById("license-form").addEventListener("submit", issueLicense);
 document.querySelectorAll(".fetch-versions").forEach((button) => button.addEventListener("click", fetchVersions));
+["installer-version", "school-gate-version", "adapter-version", "node-version"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", markRecipeDirty);
+});
 
 refresh().catch((error) => setText("summary", error.message));
 setInterval(() => refresh().catch(() => {}), 5000);
-
