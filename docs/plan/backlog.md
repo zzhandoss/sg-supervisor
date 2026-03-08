@@ -3,7 +3,7 @@
 ## Current
 
 - Validate the Linux local-release path on a real Linux host or VM now that the owner panel build policy is host-native.
-- Measure a fresh Windows owner `build-local-release` run after runtime-only payload filtering to confirm the expected improvement in local release time.
+- Measure and document Windows local-release timing baselines now that the fresh owner `build-local-release` path is functionally validated end-to-end.
 
 ## Next
 

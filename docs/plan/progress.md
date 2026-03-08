@@ -146,3 +146,4 @@
 - added short Windows build-stage handling plus temporary `subst` mounting for WiX so MSI packaging no longer depends on long workspace paths
 - added runtime-only filtering for install-tree materialization and WiX source generation so dev-only artifacts like `*.d.ts`, `*.map`, docs, and test content are excluded from the installer payload
 - validated the Windows packaging fixes against a real owner workspace by rebuilding `v1.0.6-test` into a final `.msi` artifact at `.release-panel/releases/v1.0.6-test/windows/school-gate-installer-v1.0.6-test-windows-x64.msi`
+- validated a fresh end-to-end owner `build-local-release` run through `sg-release-panel` itself, producing `.release-panel/releases/v1.0.7-test/windows/school-gate-installer-v1.0.7-test-windows-x64.msi` without fallback warnings
