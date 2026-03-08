@@ -31,7 +31,14 @@ func (a *App) applySetupFieldValue(key, status, value string) error {
 	}
 	if status == setup.StatusCompleted {
 		if value == "" {
-			return errors.New("telegram bot token is required when telegram-bot is completed")
+			cfg, err := a.product.Load()
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(cfg.TelegramBotToken) == "" {
+				return errors.New("telegram bot token is required when telegram-bot is completed")
+			}
+			return nil
 		}
 		return a.product.SetTelegramBotToken(value)
 	}

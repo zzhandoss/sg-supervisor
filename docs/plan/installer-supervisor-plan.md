@@ -41,16 +41,22 @@ Implemented in this repository:
 - versioned release packaging with checksums and release metadata
 - multi-platform release orchestration for one-version Windows+Linux outputs
 - GitHub Actions release pipeline for tag-driven build and publish
+- embedded local web control center assets served by the supervisor itself
+- first browser-facing control center pages for setup/status, service control, and package actions
+- browser-facing maintenance pages for install, repair, and uninstall flows
+- partial-report handling for install, repair, and uninstall failures in the control API and local web UI
+- separate product-config API/UX for operator-safe application settings such as preferred host and bot token
+- network-aware derived application config for `VITE_API_BASE_URL` and default CORS origin lists
+- separate owner-only `sg-release-panel` binary with file-based state, embedded UI, local installer release workflow, and offline license issuance
 - project tracking documents
 
 Not implemented yet:
 
-- first real GitHub Actions release validation and pipeline hardening from observed runner behavior
 - Windows MSI release orchestration beyond local WiX invocation
 - trust-chain hardening beyond local detached-signature verification
 - binary extraction/replacement for updates
 - richer operator-facing rollback/recovery reporting around maintenance operations
-- browser UI assets for control center
+- stronger upstream artifact validation and owner guidance around malformed prebuilt bundles
 
 ## Directory model
 

@@ -129,7 +129,7 @@ func runImportLicense(ctx context.Context, args []string) error {
 func runServe(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	root := fs.String("root", ".", "supervisor root")
-	listen := fs.String("listen", "127.0.0.1:8787", "listen address")
+	listen := fs.String("listen", "0.0.0.0:8787", "listen address")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

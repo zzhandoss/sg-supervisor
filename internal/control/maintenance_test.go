@@ -70,6 +70,92 @@ func TestRepairHandler(t *testing.T) {
 	}
 }
 
+func TestInstallHandlerReturnsPartialDataOnFailure(t *testing.T) {
+	server := NewServer("127.0.0.1:0", HandlerDependencies{
+		Status:                    func(context.Context) (StatusResponse, error) { return StatusResponse{}, nil },
+		GenerateActivationRequest: func(context.Context, string, string) (string, error) { return "", nil },
+		ImportLicense:             func(context.Context, string) error { return nil },
+		StartService:              func(context.Context, string) error { return nil },
+		StopService:               func(string) error { return nil },
+		RestartService:            func(context.Context, string) error { return nil },
+		ImportPackageManifest:     func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
+		ImportPackageBundle:       func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
+		ApplyPackage:              func(context.Context, string) (ActivePackageRecord, error) { return ActivePackageRecord{}, nil },
+		InstallPackage: func(context.Context, string, string) (InstallReport, error) {
+			return InstallReport{
+				ActivePackageID: "pkg-1",
+				Issues:          []Issue{{Step: "service-registration", Message: "boom"}},
+			}, errors.New("install completed with issues")
+		},
+		Repair:                     func(context.Context, string) (RepairReport, error) { return RepairReport{}, nil },
+		Uninstall:                  func(context.Context, string) (UninstallReport, error) { return UninstallReport{}, nil },
+		RenderServiceHostArtifacts: func(context.Context, string) (ServiceHostArtifacts, error) { return ServiceHostArtifacts{}, nil },
+		ValidateManifest:           func([]byte) error { return nil },
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/install", strings.NewReader(`{"packageId":"pkg-1","binaryPath":"C:\\svc\\sg-supervisor.exe"}`))
+	response := httptest.NewRecorder()
+
+	server.handleInstallPackage(response, request)
+
+	if response.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d", response.Code)
+	}
+	var body struct {
+		Success bool          `json:"success"`
+		Data    InstallReport `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Success || len(body.Data.Issues) != 1 {
+		t.Fatalf("expected partial install data")
+	}
+}
+
+func TestRepairHandlerReturnsPartialDataOnFailure(t *testing.T) {
+	server := NewServer("127.0.0.1:0", HandlerDependencies{
+		Status:                    func(context.Context) (StatusResponse, error) { return StatusResponse{}, nil },
+		GenerateActivationRequest: func(context.Context, string, string) (string, error) { return "", nil },
+		ImportLicense:             func(context.Context, string) error { return nil },
+		StartService:              func(context.Context, string) error { return nil },
+		StopService:               func(string) error { return nil },
+		RestartService:            func(context.Context, string) error { return nil },
+		ImportPackageManifest:     func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
+		ImportPackageBundle:       func(context.Context, string) (PackageRecord, error) { return PackageRecord{}, nil },
+		ApplyPackage:              func(context.Context, string) (ActivePackageRecord, error) { return ActivePackageRecord{}, nil },
+		InstallPackage:            func(context.Context, string, string) (InstallReport, error) { return InstallReport{}, nil },
+		Repair: func(context.Context, string) (RepairReport, error) {
+			return RepairReport{
+				EnsuredPaths: []string{"config"},
+				Issues:       []Issue{{Step: "service-repair", Message: "boom"}},
+			}, errors.New("repair completed with issues")
+		},
+		Uninstall:                  func(context.Context, string) (UninstallReport, error) { return UninstallReport{}, nil },
+		RenderServiceHostArtifacts: func(context.Context, string) (ServiceHostArtifacts, error) { return ServiceHostArtifacts{}, nil },
+		ValidateManifest:           func([]byte) error { return nil },
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/repair", strings.NewReader(`{"binaryPath":"C:\\svc\\sg-supervisor.exe"}`))
+	response := httptest.NewRecorder()
+
+	server.handleRepair(response, request)
+
+	if response.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d", response.Code)
+	}
+	var body struct {
+		Success bool         `json:"success"`
+		Data    RepairReport `json:"data"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Success || len(body.Data.Issues) != 1 {
+		t.Fatalf("expected partial repair data")
+	}
+}
+
 func TestUninstallHandler(t *testing.T) {
 	server := NewServer("127.0.0.1:0", HandlerDependencies{
 		Status:                    func(context.Context) (StatusResponse, error) { return StatusResponse{}, nil },

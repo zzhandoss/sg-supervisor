@@ -102,6 +102,6 @@ func writeConfig(path string, cfg SupervisorConfig) error {
 func defaultConfig() SupervisorConfig {
 	return SupervisorConfig{
 		ProductName:   "School Gate",
-		ListenAddress: "127.0.0.1:8787",
+		ListenAddress: "0.0.0.0:8787",
 	}
 }

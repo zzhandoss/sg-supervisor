@@ -113,3 +113,27 @@
 - added a supervisor-managed product-config store and generated runtime env file for operator-entered product values
 - wired the optional `telegram-bot` setup field to persist `TELEGRAM_BOT_TOKEN`, regenerate `runtime/config/product.env`, and overlay the bot env in the in-memory service catalog without overwriting `services.json`
 - extended the existing setup API/CLI contract with an optional `value` payload so setup state and real product config can be updated together
+- added embedded local web UI assets served directly by the Go supervisor without adding frontend dependencies or a separate asset build pipeline
+- shipped the first browser-facing control center shell for setup/status, license actions, service start-stop-restart, and package import/apply flows on top of the existing control API
+- revalidated the local web UI slice with `gofmt`, `go test ./...`, and `go build ./cmd/sg-supervisor`
+- extended `install` and `repair` with partial-report/error contracts so browser and API operators can see what completed before a maintenance failure
+- expanded the embedded control center with richer status details for directories, active package context, service probes/components, and last-update messaging
+- added browser-facing maintenance flows for `install-package`, `repair`, and `uninstall`, including partial-failure report rendering
+- revalidated the maintenance-reporting and richer-UI slice with `gofmt`, `go test ./...`, and `go build ./cmd/sg-supervisor`
+- added a separate `product-config` contract in status and control API instead of overloading setup-state semantics
+- extended generated `product.env` and in-memory runtime config with network-aware defaults for `VITE_API_BASE_URL`, `API_CORS_ALLOWED_ORIGINS`, and `DEVICE_SERVICE_CORS_ALLOWED_ORIGINS`
+- added application-panel forms for preferred host selection and bot token management, while keeping setup-state focused on completion state
+- changed new supervisor default listen address to `0.0.0.0:8787` for network-accessible local web control center on fresh configs
+- revalidated the product-config and application-panel slice with `gofmt`, `go test ./...`, and `go build ./cmd/sg-supervisor`
+- polished the local web control center toward an application-panel UX with guided next-step messaging, less technical service cards, clearer section copy, and package-id handoff between update and maintenance flows
+- reduced raw operational detail in the browser UI so the panel emphasizes application actions instead of observability-style diagnostics
+- revalidated the application-panel UX polish slice with `gofmt`, `go test ./...`, and `go build ./cmd/sg-supervisor`
+- added an explicit Admin UI entry flow by deriving a network-aware Admin UI URL from the current product config and exposing it in the browser panel as a direct link
+- surfaced the Admin UI URL in both application config summary and access guidance, without adding OS-level browser-launch side effects
+- revalidated the Admin UI entry slice with `gofmt`, `go test ./...`, and `go build ./cmd/sg-supervisor`
+- expanded maintenance result UX so install/repair/uninstall actions now show detailed path/service/hint lists from the existing report payloads instead of only a compact summary
+- revalidated the maintenance-detail UX slice with `go test ./...` and `go build ./cmd/sg-supervisor`
+- added separate owner-side `sg-release-panel` binary with its own file-based state, embedded local web UI, and CLI surface
+- release panel now auto-generates stable license/package signing keypairs, stores owner recipe state, lists upstream repo versions through `gh`, and issues signed offline license files from direct input or activation-request payloads
+- added local release workflow that downloads `school-gate`, `dahua-terminal-adapter`, and Node runtime artifacts, prepares a release workspace with a generated `config/supervisor.json`, cross-builds `sg-supervisor`, and produces local Windows/Linux installer artifacts plus aggregate release-set metadata
+- validated the release-panel slice with `go test ./...` and `go build ./cmd/...`

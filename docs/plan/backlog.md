@@ -4,13 +4,12 @@
 
 ## Next
 
-- Add local web UI assets for browser-facing control center flows.
-- Add similar partial-report/error contracts for install and repair if maintenance execution needs the same operator visibility.
-- Extend the product-config store beyond `TELEGRAM_BOT_TOKEN` as more owner-approved runtime field contracts are finalized.
+- Harden the local release workflow against malformed upstream `school-gate` prebuilt bundles and surface clearer owner-facing remediation guidance.
+- Extend the product-config contract with more owner-approved operator-safe application fields if the installed application panel scope grows.
+- Add richer release-panel reporting for download/build prerequisites such as missing `gh`, missing `go`, or missing WiX.
 
 ## Later
 
-- Add local web UI assets and browser-facing control center pages.
-- Add installer packaging automation for MSI and Linux distribution flow.
+- Add optional GitHub publish mode on top of the local release-panel workflow if product policy returns to repository-driven releases.
 - Add stricter platform-specific fingerprint providers where justified.
 - Add rollback support for update failures if product policy changes.

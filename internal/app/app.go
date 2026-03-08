@@ -103,6 +103,10 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 		return control.StatusResponse{}, err
 	}
 	serviceStatuses := a.runtime.StatusesWithHealth(ctx)
+	productConfig, err := a.ProductConfigStatus(ctx)
+	if err != nil {
+		return control.StatusResponse{}, err
+	}
 
 	return control.StatusResponse{
 		ProductName:   a.cfg.ProductName,
@@ -126,6 +130,7 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 		Services:         serviceStatuses,
 		ImportedPackages: mapPackageRecords(importedPackages),
 		ActivePackage:    mapActivePackage(activePackage),
+		ProductConfig:    productConfig,
 	}, nil
 }
 
@@ -235,6 +240,7 @@ func (a *App) Serve(ctx context.Context, listen string) error {
 			return mapActivePackage(record), nil
 		},
 		UpdateSetupField:           a.UpdateSetupField,
+		UpdateProductConfig:        a.UpdateProductConfig,
 		InstallPackage:             a.InstallPackage,
 		Repair:                     a.Repair,
 		Uninstall:                  a.Uninstall,

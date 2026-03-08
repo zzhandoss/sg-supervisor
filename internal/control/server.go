@@ -36,6 +36,7 @@ type StatusResponse struct {
 	Services         []runtime.ServiceStatus `json:"services"`
 	ImportedPackages []PackageRecord         `json:"importedPackages"`
 	ActivePackage    ActivePackageRecord     `json:"activePackage"`
+	ProductConfig    ProductConfigStatus     `json:"productConfig"`
 }
 
 type PackageRecord struct {
@@ -87,6 +88,7 @@ type HandlerDependencies struct {
 	ImportPackageBundle        func(context.Context, string) (PackageRecord, error)
 	ApplyPackage               func(context.Context, string) (ActivePackageRecord, error)
 	UpdateSetupField           SetupFieldUpdater
+	UpdateProductConfig        ProductConfigUpdater
 	InstallPackage             Installer
 	Repair                     Repairer
 	Uninstall                  Uninstaller
@@ -104,27 +106,9 @@ func NewServer(listen string, deps HandlerDependencies) *Server {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", s.handleHealth)
-	mux.HandleFunc("/api/v1/status", s.handleStatus)
-	mux.HandleFunc("/api/v1/activation-request", s.handleActivationRequest)
-	mux.HandleFunc("/api/v1/license/import", s.handleLicenseImport)
-	mux.HandleFunc("/api/v1/services/start", s.handleServiceStart)
-	mux.HandleFunc("/api/v1/services/stop", s.handleServiceStop)
-	mux.HandleFunc("/api/v1/services/restart", s.handleServiceRestart)
-	mux.HandleFunc("/api/v1/updates/import-manifest", s.handleManifestImport)
-	mux.HandleFunc("/api/v1/updates/import-bundle", s.handleBundleImport)
-	mux.HandleFunc("/api/v1/updates/apply", s.handleApplyPackage)
-	mux.HandleFunc("/api/v1/setup/fields", s.handleSetupFieldUpdate)
-	mux.HandleFunc("/api/v1/install", s.handleInstallPackage)
-	mux.HandleFunc("/api/v1/repair", s.handleRepair)
-	mux.HandleFunc("/api/v1/uninstall", s.handleUninstall)
-	mux.HandleFunc("/api/v1/service-host/render", s.handleServiceHostRender)
-	mux.HandleFunc("/api/v1/manifests/validate", s.handleManifestValidation)
-
 	server := &http.Server{
 		Addr:              s.listen,
-		Handler:           mux,
+		Handler:           s.handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -296,27 +280,4 @@ func (s *Server) handleApplyPackage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": record})
-}
-
-func decodeBody(r *http.Request, target any) error {
-	if r.Method != http.MethodPost {
-		return fmt.Errorf("method %s is not allowed", r.Method)
-	}
-	defer r.Body.Close()
-	return json.NewDecoder(r.Body).Decode(target)
-}
-
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
-}
-
-func writeError(w http.ResponseWriter, status int, err error) {
-	writeJSON(w, status, map[string]any{
-		"success": false,
-		"error": map[string]string{
-			"message": err.Error(),
-		},
-	})
 }

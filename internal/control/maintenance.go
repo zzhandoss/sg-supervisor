@@ -8,18 +8,22 @@ import (
 )
 
 type InstallReport struct {
+	Completed       bool     `json:"completed"`
 	PackageID       string   `json:"packageId"`
 	ActivePackageID string   `json:"activePackageId"`
 	ServiceName     string   `json:"serviceName"`
 	WrittenFiles    []string `json:"writtenFiles"`
 	InstallHints    []string `json:"installHints"`
+	Issues          []Issue  `json:"issues,omitempty"`
 }
 
 type RepairReport struct {
+	Completed           bool     `json:"completed"`
 	EnsuredPaths        []string `json:"ensuredPaths"`
 	ServiceArtifacts    []string `json:"serviceArtifacts"`
 	ActivePackageID     string   `json:"activePackageId,omitempty"`
 	NeedsPackageInstall bool     `json:"needsPackageInstall"`
+	Issues              []Issue  `json:"issues,omitempty"`
 }
 
 type Issue struct {
@@ -49,6 +53,10 @@ func (s *Server) handleInstallPackage(w http.ResponseWriter, r *http.Request) {
 	}
 	report, err := s.deps.InstallPackage(r.Context(), request.PackageID, request.BinaryPath)
 	if err != nil {
+		if len(report.Issues) > 0 || report.ActivePackageID != "" || len(report.WrittenFiles) > 0 || report.Completed {
+			writeErrorWithData(w, http.StatusConflict, err, report)
+			return
+		}
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -65,6 +73,10 @@ func (s *Server) handleRepair(w http.ResponseWriter, r *http.Request) {
 	}
 	report, err := s.deps.Repair(r.Context(), request.BinaryPath)
 	if err != nil {
+		if len(report.Issues) > 0 || len(report.EnsuredPaths) > 0 || len(report.ServiceArtifacts) > 0 || report.Completed {
+			writeErrorWithData(w, http.StatusConflict, err, report)
+			return
+		}
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}

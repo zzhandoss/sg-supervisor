@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>School Gate Release Panel</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Owner Tool</p>
+        <h1>Release Panel</h1>
+        <p id="summary" class="summary">Loading release panel state.</p>
+      </div>
+      <button id="refresh-button" class="secondary" type="button">Refresh</button>
+    </header>
+
+    <section class="card">
+      <h2>Release Recipe</h2>
+      <form id="recipe-form" class="grid-form">
+        <label>Installer Version<input id="installer-version" name="installerVersion" required></label>
+        <label>School Gate Version<input id="school-gate-version" name="schoolGateVersion" list="school-gate-options" required></label>
+        <label>Adapter Version<input id="adapter-version" name="adapterVersion" list="adapter-options" required></label>
+        <label>Node Version<input id="node-version" name="nodeVersion" list="node-options" required></label>
+        <div class="actions">
+          <button type="button" data-repo="school-gate" class="secondary fetch-versions">Fetch School Gate Versions</button>
+          <button type="button" data-repo="adapter" class="secondary fetch-versions">Fetch Adapter Versions</button>
+          <button type="button" data-repo="node" class="secondary fetch-versions">Fetch Node Versions</button>
+          <button type="submit">Save Recipe</button>
+        </div>
+      </form>
+      <datalist id="school-gate-options"></datalist>
+      <datalist id="adapter-options"></datalist>
+      <datalist id="node-options"></datalist>
+    </section>
+
+    <section class="card">
+      <h2>Local Release</h2>
+      <p class="muted">Build Windows and Linux installer artifacts locally in the owner release directory.</p>
+      <button id="build-button" type="button">Start Local Release</button>
+      <p id="build-result" class="result"></p>
+    </section>
+
+    <section class="card">
+      <h2>License Issuance</h2>
+      <form id="license-form" class="grid-form">
+        <label>Activation Request Path<input id="activation-request-path" name="activationRequestPath"></label>
+        <label>Customer<input id="license-customer" name="customer"></label>
+        <label>Mode
+          <select id="license-mode" name="mode">
+            <option value="free">free</option>
+            <option value="bound">bound</option>
+          </select>
+        </label>
+        <label>Edition<input id="license-edition" name="edition" value="standard"></label>
+        <label>Features (comma separated)<input id="license-features" name="features"></label>
+        <label>Expires At (RFC3339)<input id="license-expires-at" name="expiresAt" placeholder="2035-01-01T00:00:00Z"></label>
+        <label>Fingerprint<input id="license-fingerprint" name="fingerprint"></label>
+        <label class="checkbox"><input id="license-perpetual" name="perpetual" type="checkbox">Perpetual</label>
+        <div class="actions">
+          <button type="submit">Issue License</button>
+        </div>
+      </form>
+      <p id="license-result" class="result"></p>
+    </section>
+
+    <section class="card">
+      <h2>Jobs</h2>
+      <div id="jobs" class="stack"></div>
+    </section>
+
+    <section class="card">
+      <h2>Issued Licenses</h2>
+      <div id="licenses" class="stack"></div>
+    </section>
+  </main>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
+

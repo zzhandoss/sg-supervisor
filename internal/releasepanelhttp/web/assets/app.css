@@ -1,0 +1,119 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #f7f2e6, #f3f4f6);
+  color: #1f2937;
+}
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.hero,
+.card,
+.actions,
+.stack,
+.grid-form {
+  display: grid;
+  gap: 16px;
+}
+
+.hero {
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 12px;
+  color: #92400e;
+}
+
+h1, h2, p {
+  margin: 0;
+}
+
+.summary,
+.muted,
+.result,
+.meta {
+  color: #4b5563;
+}
+
+.card {
+  background: rgba(255, 255, 255, .88);
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, .06);
+}
+
+.grid-form {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+label,
+.job-card,
+.license-card {
+  display: grid;
+  gap: 8px;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+}
+
+button {
+  cursor: pointer;
+  background: #0f766e;
+  color: #fff;
+  border: 0;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.actions {
+  align-content: end;
+}
+
+.checkbox {
+  align-content: center;
+}
+
+.stack {
+  gap: 12px;
+}
+
+.job-card,
+.license-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+
+.log-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 720px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+

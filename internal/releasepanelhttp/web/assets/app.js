@@ -1,0 +1,129 @@
+const state = {
+  status: null,
+};
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.success === false) {
+    throw new Error(payload.error?.message || "Request failed");
+  }
+  return payload.data;
+}
+
+function setText(id, value) {
+  document.getElementById(id).textContent = value || "";
+}
+
+function renderStatus(status) {
+  state.status = status;
+  setText("summary", `Repo: ${status.repoRoot || "not set"} | Releases: ${status.releaseDir}`);
+  document.getElementById("installer-version").value = status.recipe.installerVersion || "";
+  document.getElementById("school-gate-version").value = status.recipe.schoolGateVersion || "";
+  document.getElementById("adapter-version").value = status.recipe.adapterVersion || "";
+  document.getElementById("node-version").value = status.recipe.nodeVersion || "";
+  renderJobs(status.jobs || []);
+  renderLicenses(status.issuedLicenses || []);
+}
+
+function renderJobs(jobs) {
+  const root = document.getElementById("jobs");
+  root.innerHTML = jobs.length ? "" : "<p class='meta'>No jobs yet.</p>";
+  jobs.forEach((job) => {
+    const article = document.createElement("article");
+    article.className = "job-card";
+    const logs = (job.logs || []).map((entry) => `<li>${entry}</li>`).join("");
+    const artifact = job.report?.reports?.map((report) => `<li>${report.platform}: ${report.artifactPath}</li>`).join("") || "";
+    article.innerHTML = `
+      <strong>${job.type} · ${job.status}</strong>
+      <span class="meta">${job.createdAt}</span>
+      ${job.error ? `<span class="meta">${job.error}</span>` : ""}
+      ${artifact ? `<ul class="log-list">${artifact}</ul>` : ""}
+      ${logs ? `<ul class="log-list">${logs}</ul>` : ""}
+    `;
+    root.appendChild(article);
+  });
+}
+
+function renderLicenses(records) {
+  const root = document.getElementById("licenses");
+  root.innerHTML = records.length ? "" : "<p class='meta'>No licenses issued yet.</p>";
+  records.forEach((record) => {
+    const article = document.createElement("article");
+    article.className = "license-card";
+    article.innerHTML = `
+      <strong>${record.licenseId}</strong>
+      <span class="meta">${record.customer || "No customer"} · ${record.mode} · ${record.edition}</span>
+      <span class="meta">${record.path}</span>
+    `;
+    root.appendChild(article);
+  });
+}
+
+async function refresh() {
+  renderStatus(await api("/api/v1/status"));
+}
+
+async function saveRecipe(event) {
+  event.preventDefault();
+  await api("/api/v1/recipe", {
+    method: "POST",
+    body: JSON.stringify({
+      installerVersion: document.getElementById("installer-version").value,
+      schoolGateVersion: document.getElementById("school-gate-version").value,
+      adapterVersion: document.getElementById("adapter-version").value,
+      nodeVersion: document.getElementById("node-version").value,
+    }),
+  });
+  setText("build-result", "Recipe saved.");
+  await refresh();
+}
+
+async function fetchVersions(event) {
+  const repo = event.target.dataset.repo;
+  const versions = await api(`/api/v1/upstream/versions?repo=${encodeURIComponent(repo)}`);
+  const target = document.getElementById(`${repo}-options`);
+  target.innerHTML = versions.map((entry) => `<option value="${entry.tag.replace(/^v/, "")}"></option>`).join("");
+}
+
+async function startBuild() {
+  const job = await api("/api/v1/releases/local", { method: "POST", body: "{}" });
+  setText("build-result", `Started local release job ${job.id}.`);
+  await refresh();
+}
+
+async function issueLicense(event) {
+  event.preventDefault();
+  const features = document.getElementById("license-features").value
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const record = await api("/api/v1/licenses/issue", {
+    method: "POST",
+    body: JSON.stringify({
+      activationRequestPath: document.getElementById("activation-request-path").value,
+      customer: document.getElementById("license-customer").value,
+      mode: document.getElementById("license-mode").value,
+      edition: document.getElementById("license-edition").value,
+      features,
+      expiresAt: document.getElementById("license-expires-at").value,
+      fingerprint: document.getElementById("license-fingerprint").value,
+      perpetual: document.getElementById("license-perpetual").checked,
+    }),
+  });
+  setText("license-result", `Issued ${record.licenseId}.`);
+  await refresh();
+}
+
+document.getElementById("refresh-button").addEventListener("click", refresh);
+document.getElementById("recipe-form").addEventListener("submit", saveRecipe);
+document.getElementById("build-button").addEventListener("click", startBuild);
+document.getElementById("license-form").addEventListener("submit", issueLicense);
+document.querySelectorAll(".fetch-versions").forEach((button) => button.addEventListener("click", fetchVersions));
+
+refresh().catch((error) => setText("summary", error.message));
+setInterval(() => refresh().catch(() => {}), 5000);
+

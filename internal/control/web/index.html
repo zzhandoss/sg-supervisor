@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>School Gate Control Center</title>
+    <link rel="stylesheet" href="/assets/app.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Local web control surface</p>
+        <h1>School Gate Control Center</h1>
+        <p class="hero-copy">
+          Activate the product, set network access, manage core services, and apply updates from one local panel.
+        </p>
+        <div class="hero-actions">
+          <button type="button" data-action="refresh">Refresh status</button>
+          <span id="flash-message" class="flash-message" aria-live="polite"></span>
+        </div>
+      </header>
+
+      <main class="grid-layout">
+        <section class="panel panel-wide" aria-labelledby="system-overview-title">
+          <div class="panel-head">
+            <p class="panel-kicker">System</p>
+            <h2 id="system-overview-title">Status Overview</h2>
+          </div>
+          <div id="overview-cards" class="status-cards"></div>
+          <pre id="status-summary" class="summary-block"></pre>
+          <div id="status-details" class="actions-grid"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="setup-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Setup</p>
+            <h2 id="setup-title">Activation and setup status</h2>
+            <p class="section-copy">Complete the required steps once, then return here only when something changes.</p>
+          </div>
+          <div id="setup-fields" class="stack"></div>
+          <form id="activation-request-form" class="stack form-block">
+            <label>
+              <span>Customer</span>
+              <input name="customer" type="text" placeholder="Customer hint" />
+            </label>
+            <label>
+              <span>Output path</span>
+              <input name="output" type="text" placeholder="Optional activation-request.json path" />
+            </label>
+            <button type="submit">Generate activation request</button>
+          </form>
+          <form id="license-import-form" class="stack form-block">
+            <label>
+              <span>License path</span>
+              <input name="path" type="text" placeholder="C:\licenses\current-license.json" required />
+            </label>
+            <button type="submit">Import license</button>
+          </form>
+        </section>
+
+        <section class="panel" aria-labelledby="application-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Application</p>
+            <h2 id="application-title">Network and bot configuration</h2>
+            <p class="section-copy">Choose how users reach the panel and the app, then save optional bot credentials.</p>
+          </div>
+          <div id="product-config-summary" class="summary-row"></div>
+          <div class="button-row">
+            <a id="admin-ui-link" class="link-button" href="#" target="_blank" rel="noreferrer">Open Admin UI</a>
+          </div>
+          <form id="preferred-host-form" class="stack form-block">
+            <label>
+              <span>Preferred host</span>
+                <input name="preferredHost" type="text" list="available-hosts" placeholder="auto-detect or explicit host/ip" />
+            </label>
+            <datalist id="available-hosts"></datalist>
+            <button type="submit">Save network host</button>
+          </form>
+          <form id="telegram-token-form" class="stack form-block">
+            <label>
+              <span>Telegram bot token</span>
+              <input name="telegramBotToken" type="text" placeholder="Set a new bot token" />
+            </label>
+            <label>
+              <input name="clearTelegramBotToken" type="checkbox" />
+              <span>Clear current bot token</span>
+            </label>
+            <button type="submit">Save bot configuration</button>
+          </form>
+        </section>
+
+        <section class="panel" aria-labelledby="services-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Application</p>
+            <h2 id="services-title">Service actions</h2>
+            <p class="section-copy">Use these controls for normal start, stop, and restart actions.</p>
+          </div>
+          <div id="services-list" class="stack"></div>
+        </section>
+
+        <section class="panel panel-wide" aria-labelledby="updates-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Updates</p>
+            <h2 id="updates-title">Packages and updates</h2>
+            <p class="section-copy">Import signed package files, then apply or install the package you want to run.</p>
+          </div>
+          <div class="actions-grid">
+            <form id="manifest-import-form" class="stack form-block">
+              <label>
+                <span>Signed manifest path</span>
+                <input name="path" type="text" placeholder="C:\packages\manifest.json" required />
+              </label>
+              <button type="submit">Import manifest</button>
+            </form>
+            <form id="bundle-import-form" class="stack form-block">
+              <label>
+                <span>Update bundle path</span>
+                <input name="path" type="text" placeholder="C:\packages\bundle.zip" required />
+              </label>
+              <button type="submit">Import bundle</button>
+            </form>
+            <form id="package-apply-form" class="stack form-block">
+              <label>
+                <span>Imported package id</span>
+                <input name="packageId" type="text" placeholder="package id" required />
+              </label>
+              <button type="submit">Apply package</button>
+            </form>
+          </div>
+          <div id="update-status" class="summary-row"></div>
+          <div id="packages-list" class="stack"></div>
+        </section>
+
+        <section class="panel panel-wide" aria-labelledby="maintenance-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Maintenance</p>
+            <h2 id="maintenance-title">Install, repair, and uninstall</h2>
+            <p class="section-copy">Use install when registering a package on the machine, repair when the service host needs to be restored, and uninstall only when removing the product.</p>
+          </div>
+          <div class="actions-grid">
+            <form id="install-package-form" class="stack form-block">
+              <label>
+                <span>Imported package id</span>
+                <input name="packageId" type="text" placeholder="package id" required />
+              </label>
+              <label>
+                <span>Supervisor binary path</span>
+                <input name="binaryPath" type="text" placeholder="C:\svc\sg-supervisor.exe" required />
+              </label>
+              <button type="submit">Install package</button>
+            </form>
+            <form id="repair-form" class="stack form-block">
+              <label>
+                <span>Supervisor binary path</span>
+                <input name="binaryPath" type="text" placeholder="C:\svc\sg-supervisor.exe" required />
+              </label>
+              <button type="submit">Repair installation</button>
+            </form>
+            <form id="uninstall-form" class="stack form-block">
+              <label>
+                <span>Uninstall mode</span>
+                <select name="mode">
+                  <option value="keep-state">keep-state</option>
+                  <option value="full-wipe">full-wipe</option>
+                </select>
+              </label>
+              <button type="submit">Uninstall</button>
+            </form>
+          </div>
+          <div id="maintenance-status" class="summary-row">No maintenance action has been run yet.</div>
+          <div id="maintenance-details" class="actions-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/assets/app.js" defer></script>
+    <script src="/assets/app-render.js" defer></script>
+    <script src="/assets/app-maintenance.js" defer></script>
+    <script src="/assets/app-product.js" defer></script>
+  </body>
+</html>

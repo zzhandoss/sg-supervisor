@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 type CommandSpec struct {
@@ -150,16 +151,22 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 }
 
 func ApplyProductConfig(layout Layout, catalog ServiceCatalog, product ProductConfig) ServiceCatalog {
+	status := deriveProductConfigStatus(product, detectMachineHosts())
 	services := make([]ServiceSpec, 0, len(catalog.Services))
 	for _, service := range catalog.Services {
 		current := service
 		current.Env = cloneEnv(service.Env)
 		current.Env["SG_PRODUCT_ENV_FILE"] = ProductEnvFile(layout)
+		current.Env["API_CORS_ALLOWED_ORIGINS"] = strings.Join(status.APICorsAllowedOrigins, ",")
+		current.Env["DEVICE_SERVICE_CORS_ALLOWED_ORIGINS"] = strings.Join(status.DeviceServiceCorsAllowedOrigins, ",")
 		if current.Name == "bot" {
 			delete(current.Env, "TELEGRAM_BOT_TOKEN")
 			if product.TelegramBotToken != "" {
 				current.Env["TELEGRAM_BOT_TOKEN"] = product.TelegramBotToken
 			}
+		}
+		if current.Name == "admin-ui" {
+			current.Env["VITE_API_BASE_URL"] = status.ViteAPIBaseURL
 		}
 		services = append(services, current)
 	}
