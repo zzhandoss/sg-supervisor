@@ -52,8 +52,8 @@ function renderStatus(status) {
   state.status = status;
   setText("summary", `Host: ${status.hostPlatform} | Repo: ${status.repoRoot || "not set"} | Releases: ${status.releaseDir}`);
   setText("build-policy", status.hostPlatform === "windows"
-    ? "This machine builds the Windows installer locally. Build the Linux installer from a Linux host."
-    : "This machine builds the Linux installer locally. Build the Windows installer from a Windows host.");
+    ? "This machine builds the Windows delivery archive locally. Build the Linux delivery archive from a Linux host."
+    : "This machine builds the Linux delivery archive locally. Build the Windows delivery archive from a Windows host.");
   if (!state.recipeDirty) {
     syncRecipeInputs(status.recipe || {});
     setRecipeStatus("Recipe is saved and ready for local release.", "saved");

@@ -58,8 +58,8 @@ function buildNextStep(status) {
   }
   if (!status.activePackage?.packageId) {
     return {
-      title: "Import and apply a package.",
-      detail: "The panel is configured, but no package is active yet.",
+      title: "Apply the local delivery bundle or import a package.",
+      detail: "Use the payload zip from the customer delivery archive if this is a fresh installation.",
     };
   }
   return {

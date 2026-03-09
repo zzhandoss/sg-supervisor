@@ -95,8 +95,14 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 	if len(report.Platforms) != 1 {
 		t.Fatalf("expected one platform entry, got %+v", report.Platforms)
 	}
+	if !strings.Contains(filepath.Base(report.Reports[0].ArtifactPath), "delivery") {
+		t.Fatalf("expected delivery artifact path, got %s", report.Reports[0].ArtifactPath)
+	}
 	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", "release-set.json")); err != nil {
 		t.Fatalf("expected release-set metadata: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", report.Platforms[0], payloadArtifactName("1.0.0", report.Platforms[0]))); err != nil {
+		t.Fatalf("expected payload bundle: %v", err)
 	}
 }
 

@@ -102,22 +102,36 @@ func (s *Service) buildPlatformRelease(ctx context.Context, job *Job, state Stat
 	}); err != nil {
 		return release.Report{}, errors.New("core assembly failed for " + platform + ": " + err.Error())
 	}
-	if err := prepareWorkspace(workspaceRoot, platform, state, assets); err != nil {
+	if err := prepareWorkspace(workspaceRoot, assets); err != nil {
 		return release.Report{}, errors.New("workspace preparation failed for " + platform + ": " + err.Error())
+	}
+	payloadBundlePath := filepath.Join(workspaceRoot, "payload", payloadArtifactName(trimVersion(state.Recipe.InstallerVersion), platform))
+	job.Logs = append(job.Logs, "building local payload bundle")
+	_ = s.jobs.Save(*job)
+	if _, err := buildLocalPayloadBundle(ctx, workspaceRoot, state, payloadBundlePath); err != nil {
+		return release.Report{}, errors.New("payload bundle build failed for " + platform + ": " + err.Error())
+	}
+	bootstrapRoot := filepath.Join(workspaceRoot, "bootstrap")
+	if err := prepareBootstrapWorkspace(bootstrapRoot, platform, state, assets); err != nil {
+		return release.Report{}, errors.New("bootstrap workspace preparation failed for " + platform + ": " + err.Error())
 	}
 	binaryPath := filepath.Join(workspaceRoot, "binaries", supervisorBinaryName(platform))
 	if err := s.builder.BuildSupervisor(ctx, state.RepoRoot, platform, binaryPath); err != nil {
 		return release.Report{}, errors.New("supervisor build failed for " + platform + ": " + err.Error())
 	}
-	supervisor, err := app.New(workspaceRoot)
+	supervisor, err := app.New(bootstrapRoot)
 	if err != nil {
 		return release.Report{}, errors.New("workspace bootstrap failed for " + platform + ": " + err.Error())
 	}
+	job.Logs = append(job.Logs, "building bootstrap installer")
+	_ = s.jobs.Save(*job)
 	report, err := supervisor.BuildRelease(ctx, platform, state.Recipe.InstallerVersion, binaryPath)
 	if err != nil {
 		return release.Report{}, errors.New("release build failed for " + platform + ": " + err.Error())
 	}
-	return copyReleaseReport(s.layout.Root, state.Recipe.InstallerVersion, report)
+	job.Logs = append(job.Logs, "assembling delivery archive")
+	_ = s.jobs.Save(*job)
+	return buildDeliveryRelease(ctx, s.layout.Root, state.Recipe.InstallerVersion, platform, report.ArtifactPath, payloadBundlePath, report.Warnings)
 }
 
 func supervisorBinaryName(platform string) string {

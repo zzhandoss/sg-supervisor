@@ -86,6 +86,7 @@ type HandlerDependencies struct {
 	RestartService             func(context.Context, string) error
 	ImportPackageManifest      func(context.Context, string) (PackageRecord, error)
 	ImportPackageBundle        func(context.Context, string) (PackageRecord, error)
+	ApplyLocalBundle           func(context.Context, string) (ActivePackageRecord, error)
 	ApplyPackage               func(context.Context, string) (ActivePackageRecord, error)
 	UpdateSetupField           SetupFieldUpdater
 	UpdateProductConfig        ProductConfigUpdater
@@ -259,6 +260,22 @@ func (s *Server) handleBundleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	record, err := s.deps.ImportPackageBundle(r.Context(), request.Path)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": record})
+}
+
+func (s *Server) handleApplyLocalBundle(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Path string `json:"path"`
+	}
+	if err := decodeBody(r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	record, err := s.deps.ApplyLocalBundle(r.Context(), request.Path)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return

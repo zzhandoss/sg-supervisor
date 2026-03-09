@@ -48,6 +48,7 @@ Implemented in this repository:
 - separate product-config API/UX for operator-safe application settings such as preferred host and bot token
 - network-aware derived application config for `VITE_API_BASE_URL` and default CORS origin lists
 - separate owner-only `sg-release-panel` binary with file-based state, embedded UI, local installer release workflow, and offline license issuance
+- local delivery model where owner builds a bootstrap installer plus a separate signed payload bundle instead of embedding the full app runtime tree into MSI payloads
 - project tracking documents
 
 Not implemented yet:
@@ -56,7 +57,7 @@ Not implemented yet:
 - trust-chain hardening beyond local detached-signature verification
 - binary extraction/replacement for updates
 - richer operator-facing rollback/recovery reporting around maintenance operations
-- stronger upstream artifact validation and owner guidance around malformed prebuilt bundles
+- richer first-install guidance that treats local payload apply as a bootstrap step rather than a generic update action
 
 ## Directory model
 
@@ -79,6 +80,7 @@ Supervisor root uses the following managed directories:
 - Adapter compatibility is enforced with machine-readable manifest metadata.
 - Adapter updates may be delivered through installer-only updates without replacing the core bundle.
 - Invalid license blocks core runtime but does not need to block adapter startup.
+- Owner delivery now targets `bootstrap installer + local payload bundle`, so installer packaging stays small while the installed Control Center applies the product payload from a local archive.
 
 ## Implementation sequence
 

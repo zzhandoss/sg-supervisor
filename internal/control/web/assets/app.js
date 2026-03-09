@@ -33,6 +33,11 @@ function wireCoreForms() {
       path: form.path.value.trim(),
     })
   );
+  bindSubmit("local-bundle-apply-form", (form) =>
+    api("/api/v1/updates/apply-local-bundle", {
+      path: form.path.value.trim(),
+    })
+  );
   bindSubmit("package-apply-form", (form) =>
     api("/api/v1/updates/apply", {
       packageId: form.packageId.value.trim(),

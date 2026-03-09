@@ -232,6 +232,13 @@ func (a *App) Serve(ctx context.Context, listen string) error {
 			}
 			return mapPackageRecord(record), nil
 		},
+		ApplyLocalBundle: func(ctx context.Context, path string) (control.ActivePackageRecord, error) {
+			record, err := a.ApplyLocalBundle(ctx, path)
+			if err != nil {
+				return control.ActivePackageRecord{}, err
+			}
+			return mapActivePackage(record), nil
+		},
 		ApplyPackage: func(ctx context.Context, packageID string) (control.ActivePackageRecord, error) {
 			record, err := a.ApplyPackage(ctx, packageID)
 			if err != nil {

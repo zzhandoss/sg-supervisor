@@ -147,3 +147,9 @@
 - added runtime-only filtering for install-tree materialization and WiX source generation so dev-only artifacts like `*.d.ts`, `*.map`, docs, and test content are excluded from the installer payload
 - validated the Windows packaging fixes against a real owner workspace by rebuilding `v1.0.6-test` into a final `.msi` artifact at `.release-panel/releases/v1.0.6-test/windows/school-gate-installer-v1.0.6-test-windows-x64.msi`
 - validated a fresh end-to-end owner `build-local-release` run through `sg-release-panel` itself, producing `.release-panel/releases/v1.0.7-test/windows/school-gate-installer-v1.0.7-test-windows-x64.msi` without fallback warnings
+- pivoted local release output away from fat-MSI delivery toward `bootstrap installer + separate local payload bundle`
+- release panel now builds a signed local package bundle from `school-gate` core and adapter payloads, then assembles a customer delivery archive that contains the bootstrap installer plus the payload zip
+- bootstrap installer packaging now uses a minimal workspace with supervisor, bundled Node runtime, and service-host artifacts only; app runtime files no longer inflate WiX/MSI inputs
+- supervisor gained a direct `apply-local-bundle` flow so the installed Control Center can import and apply the payload zip from the extracted delivery archive in one step
+- reduced the full release workspace footprint by removing bundled Node extraction from the product-payload workspace; Node is now staged only for the bootstrap installer workspace
+- revalidated the delivery-pivot slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`

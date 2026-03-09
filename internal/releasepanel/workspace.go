@@ -14,7 +14,7 @@ type WorkspaceAssets struct {
 	NodePath    string
 }
 
-func prepareWorkspace(root, platform string, state State, assets WorkspaceAssets) error {
+func prepareWorkspace(root string, assets WorkspaceAssets) error {
 	layout := config.NewLayout(root)
 	if err := config.EnsureLayout(layout); err != nil {
 		return err
@@ -25,16 +25,7 @@ func prepareWorkspace(root, platform string, state State, assets WorkspaceAssets
 	if err := pruneRuntimeTree(filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter")); err != nil {
 		return err
 	}
-	if err := extractArchive(assets.NodePath, filepath.Join(layout.InstallDir, "runtime", "node")); err != nil {
-		return err
-	}
-	if err := prepareNodeRuntime(filepath.Join(layout.InstallDir, "runtime", "node"), platform); err != nil {
-		return err
-	}
-	if err := writeSupervisorConfig(layout.ConfigFile, state); err != nil {
-		return err
-	}
-	return validateWorkspace(layout, platform)
+	return validateWorkspace(layout)
 }
 
 func writeSupervisorConfig(path string, state State) error {
@@ -52,7 +43,7 @@ func writeSupervisorConfig(path string, state State) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-func validateWorkspace(layout config.Layout, platform string) error {
+func validateWorkspace(layout config.Layout) error {
 	required := []string{
 		filepath.Join(layout.InstallDir, "core", "apps", "api", "dist", "index.js"),
 		filepath.Join(layout.InstallDir, "core", "apps", "device-service", "dist", "api", "main.js"),
@@ -65,11 +56,6 @@ func validateWorkspace(layout config.Layout, platform string) error {
 		filepath.Join(layout.InstallDir, "core", "apps", "worker", "dist", "monitoring", "main.js"),
 		filepath.Join(layout.InstallDir, "core", "apps", "admin-ui"),
 		filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter", "dist", "src", "index.js"),
-	}
-	if platform == "windows" {
-		required = append(required, filepath.Join(layout.InstallDir, "runtime", "node", "node.exe"))
-	} else {
-		required = append(required, filepath.Join(layout.InstallDir, "runtime", "node", "bin", "node"))
 	}
 	for _, path := range required {
 		if _, err := os.Stat(path); err != nil {

@@ -3,11 +3,11 @@
 ## Current
 
 - Validate the Linux local-release path on a real Linux host or VM now that the owner panel build policy is host-native.
-- Measure and document Windows local-release timing baselines now that the fresh owner `build-local-release` path is functionally validated end-to-end.
+- Validate the fresh delivery-based Windows local-release flow end-to-end with the new `bootstrap installer + local payload bundle` contract and record timing baselines.
 
 ## Next
 
-- Harden the local release workflow against malformed upstream `school-gate` prebuilt bundles and surface clearer owner-facing remediation guidance.
+- Add a clearer bootstrap-install path in the Control Center so fresh installs guide the operator straight from installer to local payload apply without exposing update-oriented language.
 - Extend the product-config contract with more owner-approved operator-safe application fields if the installed application panel scope grows.
 - Add richer release-panel reporting for download/build prerequisites such as missing `gh`, missing `go`, or missing WiX.
 
