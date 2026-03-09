@@ -13,11 +13,15 @@ func (a *App) syncRuntimeConfig() error {
 	if err != nil {
 		return err
 	}
+	internalCfg, err := a.internal.Load()
+	if err != nil {
+		return err
+	}
 	catalog, err := config.LoadServiceCatalog(a.layout)
 	if err != nil {
 		return err
 	}
-	a.runtime.Reconfigure(config.ApplyProductConfig(a.layout, catalog, productCfg))
+	a.runtime.Reconfigure(config.ApplyRuntimeConfig(a.layout, catalog, productCfg, internalCfg))
 	return nil
 }
 

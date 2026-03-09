@@ -8,6 +8,7 @@
 ## Next
 
 - Extend the bootstrap UX in Control Panel so the operator can clearly see "delivery extracted -> bootstrap succeeded -> activate license -> manually start services" as the happy path.
+- Add the remaining operator-facing config flow for `TELEGRAM_BOT_TOKEN` so the last expected blocked service (`bot`) can be started from the panel without manual env editing.
 - Extend the product-config contract with more owner-approved operator-safe application fields if the installed application panel scope grows.
 - Add richer release-panel reporting for download/build prerequisites such as missing `gh`, missing `go`, or missing Node toolchain pieces on the client host.
 

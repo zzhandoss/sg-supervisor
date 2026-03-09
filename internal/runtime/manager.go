@@ -63,6 +63,10 @@ func (m *Manager) Start(ctx context.Context, name string, licenseValid bool) err
 		m.mu.Unlock()
 		return errors.New("cannot start licensed core service without a valid license")
 	}
+	if !config.ServiceConfigured(spec) {
+		m.mu.Unlock()
+		return fmt.Errorf("service %q is not configured: %s", name, config.ServiceConfigurationError(spec))
+	}
 	if spec.Kind == "static-assets" {
 		status := m.statuses[name]
 		status.State = "ready"
@@ -86,7 +90,17 @@ func (m *Manager) Start(ctx context.Context, name string, licenseValid bool) err
 	status.Components = make([]ComponentStatus, 0, len(spec.Commands))
 
 	for _, component := range spec.Commands {
-		command := exec.CommandContext(ctx, component.Executable, component.Args...)
+		if err := ctx.Err(); err != nil {
+			for _, startedEntry := range started {
+				if startedEntry.command.Process != nil {
+					_ = startedEntry.command.Process.Kill()
+				}
+			}
+			m.mu.Unlock()
+			return err
+		}
+
+		command := exec.Command(component.Executable, component.Args...)
 		command.Env = mergeEnv(spec.Env)
 		command.Dir = component.WorkingDir
 		if err := command.Start(); err != nil {

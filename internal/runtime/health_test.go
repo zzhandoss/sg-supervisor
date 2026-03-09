@@ -19,6 +19,12 @@ func TestStatusesWithHealthReadyProbe(t *testing.T) {
 		Services: []config.ServiceSpec{{
 			Name: "api",
 			Kind: "process-group",
+			Env: map[string]string{
+				"CORE_TOKEN":       "core-token",
+				"CORE_HMAC_SECRET": "core-hmac",
+				"ADMIN_JWT_SECRET": "01234567890123456789012345678901",
+				"DB_FILE":          "db.sqlite",
+			},
 			HealthChecks: []config.HealthCheckSpec{
 				{Name: "api-health", URL: server.URL, TimeoutMS: 1000},
 			},
@@ -27,6 +33,7 @@ func TestStatusesWithHealthReadyProbe(t *testing.T) {
 	manager.statuses["api"] = ServiceStatus{
 		Name:       "api",
 		Kind:       "process-group",
+		Configured: true,
 		State:      "running",
 		Components: []ComponentStatus{{Name: "api", State: "running"}},
 	}
@@ -42,11 +49,20 @@ func TestStatusesWithHealthReadyProbe(t *testing.T) {
 
 func TestStatusesWithHealthUnknownWhenNoChecks(t *testing.T) {
 	manager := NewManager(config.ServiceCatalog{
-		Services: []config.ServiceSpec{{Name: "worker", Kind: "process-group"}},
+		Services: []config.ServiceSpec{{
+			Name: "worker",
+			Kind: "process-group",
+			Env: map[string]string{
+				"BOT_INTERNAL_TOKEN":            "bot-internal",
+				"DEVICE_SERVICE_INTERNAL_TOKEN": "device-internal",
+				"DB_FILE":                       "db.sqlite",
+			},
+		}},
 	})
 	manager.statuses["worker"] = ServiceStatus{
 		Name:       "worker",
 		Kind:       "process-group",
+		Configured: true,
 		State:      "running",
 		Components: []ComponentStatus{{Name: "worker", State: "running"}},
 	}

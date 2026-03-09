@@ -174,3 +174,9 @@
 - added a persistent bootstrap pipeline state in `sg-supervisor`, plus `POST /api/v1/bootstrap/start`, so Control Center can run the client-side `corepack/pnpm install/build/deploy` flow step-by-step on the target machine
 - added the first browser-facing bootstrap section in Control Center, so the operator can launch the local install/build pipeline from the extracted delivery directory and watch step state without touching CLI commands
 - revalidated the source-bootstrap slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`
+- added a persistent internal runtime-config store for generated core secrets and rewired runtime env injection so `school-gate` services start from real derived config instead of static service catalog defaults
+- made the adapter self-configuring for installed environments by forcing `dahua-adapter` identity and deriving `DS_*` values from the configured `device-service` runtime once core secrets exist
+- blocked adapter startup until `device-service` is already running and surfaced missing runtime env as explicit readiness/configuration failures
+- added bootstrap-time database migrations plus runtime-directory preparation so fresh Windows source-bootstrap installs produce a runnable core layout without extra manual setup
+- updated adapter bootstrap for pnpm v10 by explicitly allowing `better-sqlite3` build scripts, which removed the native-binding failure on Windows
+- validated the Windows source-bootstrap e2e path on `.tmp/e2e/v1.0.13-e2e-services`: bootstrap succeeded, `api` and `device-service` reached `ready`, `worker` stayed running, `dahua-terminal-adapter` reached `ready`, and `bot` remained the only expected blocked service because `TELEGRAM_BOT_TOKEN` is unset

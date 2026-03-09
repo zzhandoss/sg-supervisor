@@ -15,7 +15,7 @@ func buildInitialStatus(service config.ServiceSpec) ServiceStatus {
 	status := ServiceStatus{
 		Name:            service.Name,
 		Kind:            service.Kind,
-		Configured:      service.StaticDir != "" || len(service.Commands) > 0,
+		Configured:      config.ServiceConfigured(service),
 		RequiresLicense: service.RequiresLicense,
 		State:           "stopped",
 		Readiness:       "not_ready",

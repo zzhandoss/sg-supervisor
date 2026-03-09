@@ -44,7 +44,7 @@ func TestProductStorePersistsTelegramBotTokenAndEnvFile(t *testing.T) {
 	}
 }
 
-func TestApplyProductConfigInjectsTelegramBotToken(t *testing.T) {
+func TestApplyRuntimeConfigInjectsTelegramBotToken(t *testing.T) {
 	layout := NewLayout(t.TempDir())
 	catalog := ServiceCatalog{
 		Services: []ServiceSpec{
@@ -52,8 +52,16 @@ func TestApplyProductConfigInjectsTelegramBotToken(t *testing.T) {
 			{Name: "api", Kind: "process-group", Env: map[string]string{"NODE_ENV": "production"}},
 		},
 	}
+	internal := InternalRuntimeConfig{
+		CoreToken:                "core-token",
+		CoreHMACSecret:           "core-hmac",
+		AdminJWTSecret:           "01234567890123456789012345678901",
+		DeviceServiceToken:       "device-token",
+		DeviceServiceInternalKey: "device-internal",
+		BotInternalToken:         "bot-internal",
+	}
 
-	applied := ApplyProductConfig(layout, catalog, ProductConfig{TelegramBotToken: "token-123"})
+	applied := ApplyRuntimeConfig(layout, catalog, ProductConfig{TelegramBotToken: "token-123"}, internal)
 	if got := applied.Services[0].Env["TELEGRAM_BOT_TOKEN"]; got != "token-123" {
 		t.Fatalf("expected telegram token override, got %q", got)
 	}
@@ -68,15 +76,23 @@ func TestApplyProductConfigInjectsTelegramBotToken(t *testing.T) {
 	}
 }
 
-func TestApplyProductConfigRemovesTelegramBotTokenWhenUnset(t *testing.T) {
+func TestApplyRuntimeConfigRemovesTelegramBotTokenWhenUnset(t *testing.T) {
 	layout := NewLayout(t.TempDir())
 	catalog := ServiceCatalog{
 		Services: []ServiceSpec{
 			{Name: "bot", Kind: "process-group", Env: map[string]string{"TELEGRAM_BOT_TOKEN": "old"}},
 		},
 	}
+	internal := InternalRuntimeConfig{
+		CoreToken:                "core-token",
+		CoreHMACSecret:           "core-hmac",
+		AdminJWTSecret:           "01234567890123456789012345678901",
+		DeviceServiceToken:       "device-token",
+		DeviceServiceInternalKey: "device-internal",
+		BotInternalToken:         "bot-internal",
+	}
 
-	applied := ApplyProductConfig(layout, catalog, ProductConfig{})
+	applied := ApplyRuntimeConfig(layout, catalog, ProductConfig{}, internal)
 	if _, ok := applied.Services[0].Env["TELEGRAM_BOT_TOKEN"]; ok {
 		t.Fatalf("expected telegram token to be removed when unset")
 	}

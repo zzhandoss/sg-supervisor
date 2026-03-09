@@ -57,6 +57,12 @@ func evaluateReadiness(ctx context.Context, status ServiceStatus, spec config.Se
 		return status
 	}
 
+	if !status.Configured {
+		status.Readiness = "not_ready"
+		status.HealthChecks = []HealthStatus{{Name: "configuration", Readiness: "not_ready", Message: config.ServiceConfigurationError(spec)}}
+		return status
+	}
+
 	if status.State != "running" {
 		status.Readiness = "not_ready"
 		status.HealthChecks = []HealthStatus{{Name: "process-group", Readiness: "not_ready", Message: "service is not running"}}

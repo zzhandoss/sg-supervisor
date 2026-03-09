@@ -22,7 +22,10 @@ func TestManagerReconfigureUpdatesServiceEnv(t *testing.T) {
 		Services: []config.ServiceSpec{{
 			Name: "bot",
 			Kind: "process-group",
-			Env:  map[string]string{"GO_WANT_RECONFIGURE_HELPER": "1"},
+			Env: map[string]string{
+				"GO_WANT_RECONFIGURE_HELPER": "1",
+				"BOT_INTERNAL_TOKEN":         "bot-internal",
+			},
 			Commands: []config.CommandSpec{{
 				Name:       "bot",
 				Executable: os.Args[0],
@@ -37,6 +40,7 @@ func TestManagerReconfigureUpdatesServiceEnv(t *testing.T) {
 			Kind: "process-group",
 			Env: map[string]string{
 				"GO_WANT_RECONFIGURE_HELPER": "1",
+				"BOT_INTERNAL_TOKEN":         "bot-internal",
 				"TELEGRAM_BOT_TOKEN":         "token-123",
 			},
 			Commands: []config.CommandSpec{{

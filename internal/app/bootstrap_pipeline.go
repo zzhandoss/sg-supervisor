@@ -39,6 +39,7 @@ func (a *App) StartBootstrap(ctx context.Context) (bootstrap.Status, error) {
 			{Name: "prepare-pnpm", State: "pending"},
 			{Name: "install-dependencies", State: "pending"},
 			{Name: "build-school-gate", State: "pending"},
+			{Name: "migrate-databases", State: "pending"},
 			{Name: "deploy-school-gate", State: "pending"},
 			{Name: "prepare-adapter", State: "pending"},
 			{Name: "cleanup-workspace", State: "pending"},
@@ -81,6 +82,9 @@ func (a *App) runBootstrapPipeline(ctx context.Context) {
 		return
 	}
 	if err := a.buildBootstrapSource(ctx, &status, assets.SourceRoot); err != nil {
+		return
+	}
+	if err := a.migrateBootstrapDatabases(ctx, &status, assets.SourceRoot); err != nil {
 		return
 	}
 	if err := a.deployBootstrapSource(ctx, &status, assets.SourceRoot); err != nil {
@@ -164,18 +168,13 @@ func (a *App) deployBootstrapSource(ctx context.Context, status *bootstrap.Statu
 	if err := a.markBootstrapStep(status, "deploy-school-gate", "running", "Preparing runnable school-gate layout"); err != nil {
 		return err
 	}
-	deployRoot := filepath.Join(a.bootstrap.Dir(), "deploy")
 	if err := os.RemoveAll(filepath.Join(a.layout.InstallDir, "core")); err != nil {
 		a.failBootstrap(*status, "deploy-school-gate", err)
 		return err
 	}
 	for _, target := range bootstrapDeployTargets() {
-		deployedDir := filepath.Join(deployRoot, target.TargetPath)
-		if _, err := runBootstrapCommand(ctx, sourceRoot, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "pnpm", "--filter", target.Filter, "deploy", "--prod", "--legacy", deployedDir); err != nil {
-			a.failBootstrap(*status, "deploy-school-gate", err)
-			return err
-		}
-		if err := copyMaterializedDir(deployedDir, filepath.Join(a.layout.InstallDir, "core", target.TargetPath)); err != nil {
+		targetDir := filepath.Join(a.layout.InstallDir, "core", target.TargetPath)
+		if _, err := runBootstrapCommand(ctx, sourceRoot, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "pnpm", "--filter", target.Filter, "deploy", "--prod", "--legacy", targetDir); err != nil {
 			a.failBootstrap(*status, "deploy-school-gate", err)
 			return err
 		}
@@ -206,6 +205,31 @@ func (a *App) prepareBootstrapAdapter(ctx context.Context, status *bootstrap.Sta
 		return err
 	}
 	if err := extractBootstrapArchive(assets.AdapterArchivePath, targetDir); err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	packageManager, err := detectPackageManager(targetDir)
+	if err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	if err := os.RemoveAll(filepath.Join(targetDir, "node_modules")); err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(targetDir, "pnpm-workspace.yaml"), []byte("onlyBuiltDependencies:\n  - better-sqlite3\n"), 0644); err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	if _, err := runBootstrapCommand(ctx, targetDir, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "prepare", packageManager, "--activate"); err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	if _, err := runBootstrapCommand(ctx, targetDir, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "pnpm", "install", "--frozen-lockfile", "--prod", "--force"); err != nil {
+		a.failBootstrap(*status, "prepare-adapter", err)
+		return err
+	}
+	if _, err := runBootstrapCommand(ctx, targetDir, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "pnpm", "rebuild"); err != nil {
 		a.failBootstrap(*status, "prepare-adapter", err)
 		return err
 	}

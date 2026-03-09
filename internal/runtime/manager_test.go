@@ -20,7 +20,13 @@ func TestManagerStartAndStop(t *testing.T) {
 			{
 				Name:            "api",
 				Kind:            "process-group",
-				Env:             map[string]string{"GO_WANT_HELPER_PROCESS": "1"},
+				Env: map[string]string{
+					"GO_WANT_HELPER_PROCESS": "1",
+					"CORE_TOKEN":             "core-token",
+					"CORE_HMAC_SECRET":       "core-hmac",
+					"ADMIN_JWT_SECRET":       "01234567890123456789012345678901",
+					"DB_FILE":                "db.sqlite",
+				},
 				RequiresLicense: true,
 				Commands: []config.CommandSpec{
 					{
@@ -63,6 +69,12 @@ func TestManagerBlocksLicensedServiceWithoutLicense(t *testing.T) {
 			Name:            "api",
 			Kind:            "process-group",
 			RequiresLicense: true,
+			Env: map[string]string{
+				"CORE_TOKEN":       "core-token",
+				"CORE_HMAC_SECRET": "core-hmac",
+				"ADMIN_JWT_SECRET": "01234567890123456789012345678901",
+				"DB_FILE":          "db.sqlite",
+			},
 			Commands:        []config.CommandSpec{{Name: "api", Executable: os.Args[0]}},
 		}},
 	})

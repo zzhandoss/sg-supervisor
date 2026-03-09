@@ -33,7 +33,7 @@ func (m *Manager) Reconfigure(catalog config.ServiceCatalog) {
 func mergeStatusWithSpec(current ServiceStatus, service config.ServiceSpec) ServiceStatus {
 	next := current
 	next.Kind = service.Kind
-	next.Configured = service.StaticDir != "" || len(service.Commands) > 0
+	next.Configured = config.ServiceConfigured(service)
 	next.RequiresLicense = service.RequiresLicense
 	next.StaticDir = service.StaticDir
 
