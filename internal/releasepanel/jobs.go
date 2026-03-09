@@ -2,9 +2,11 @@ package releasepanel
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -22,7 +24,15 @@ func (s *JobStore) Save(job Job) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(filepath.Join(s.layout.JobsDir, job.ID+".json"), data, 0o644)
+	targetPath := filepath.Join(s.layout.JobsDir, job.ID+".json")
+	tempPath := targetPath + ".tmp"
+	if err := os.WriteFile(tempPath, data, 0o644); err != nil {
+		return err
+	}
+	if err := os.Remove(targetPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.Rename(tempPath, targetPath)
 }
 
 func (s *JobStore) List() ([]Job, error) {
@@ -37,10 +47,16 @@ func (s *JobStore) List() ([]Job, error) {
 		}
 		data, err := os.ReadFile(filepath.Join(s.layout.JobsDir, entry.Name()))
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
 			return nil, err
 		}
 		var job Job
 		if err := json.Unmarshal(data, &job); err != nil {
+			if strings.Contains(err.Error(), "unexpected end of JSON input") {
+				continue
+			}
 			return nil, err
 		}
 		jobs = append(jobs, job)

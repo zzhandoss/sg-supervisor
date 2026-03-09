@@ -1,4 +1,4 @@
-package releasepanel
+package app
 
 import (
 	"io/fs"
@@ -14,16 +14,6 @@ func copyMaterializedPath(sourcePath, targetPath, rootTarget string, stack map[s
 	resolvedPath, info, err := resolveMaterializedPath(sourcePath)
 	if err != nil {
 		return err
-	}
-	relativePath := "."
-	if targetPath != rootTarget {
-		relativePath, err = filepath.Rel(rootTarget, targetPath)
-		if err != nil {
-			return err
-		}
-	}
-	if shouldSkipRuntimePath(relativePath, info.IsDir()) {
-		return nil
 	}
 	if info.IsDir() {
 		key := filepath.Clean(resolvedPath)
@@ -66,4 +56,46 @@ func resolveMaterializedPath(path string) (string, fs.FileInfo, error) {
 		return "", nil, err
 	}
 	return resolvedPath, info, nil
+}
+
+func copyDir(sourceDir, targetDir string) error {
+	return filepath.WalkDir(sourceDir, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relativePath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return err
+		}
+		if relativePath == "." {
+			return os.MkdirAll(targetDir, 0o755)
+		}
+		targetPath := filepath.Join(targetDir, relativePath)
+		if entry.IsDir() {
+			return os.MkdirAll(targetPath, 0o755)
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(targetPath, data, info.Mode())
+	})
+}
+
+func copyFile(sourcePath, targetPath string) error {
+	data, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(targetPath, data, 0o644)
 }

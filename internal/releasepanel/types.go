@@ -1,7 +1,5 @@
 package releasepanel
 
-import "sg-supervisor/internal/release"
-
 const (
 	RepoSchoolGate = "zzhandoss/school-gate"
 	RepoAdapter    = "zzhandoss/dahua-terminal-adapter"
@@ -57,16 +55,35 @@ type Status struct {
 }
 
 type Job struct {
-	ID         string             `json:"id"`
-	Type       string             `json:"type"`
-	Status     string             `json:"status"`
-	CreatedAt  string             `json:"createdAt"`
-	StartedAt  string             `json:"startedAt,omitempty"`
-	FinishedAt string             `json:"finishedAt,omitempty"`
-	Recipe     Recipe             `json:"recipe"`
-	Logs       []string           `json:"logs,omitempty"`
-	Error      string             `json:"error,omitempty"`
-	Report     *release.SetReport `json:"report,omitempty"`
+	ID         string                 `json:"id"`
+	Type       string                 `json:"type"`
+	Status     string                 `json:"status"`
+	CreatedAt  string                 `json:"createdAt"`
+	StartedAt  string                 `json:"startedAt,omitempty"`
+	FinishedAt string                 `json:"finishedAt,omitempty"`
+	Recipe     Recipe                 `json:"recipe"`
+	Logs       []string               `json:"logs,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Report     *LocalReleaseSetReport `json:"report,omitempty"`
+}
+
+type LocalReleaseReport struct {
+	Version       string   `json:"version"`
+	Platform      string   `json:"platform"`
+	ReleaseDir    string   `json:"releaseDir"`
+	ArtifactPath  string   `json:"artifactPath"`
+	MetadataPath  string   `json:"metadataPath"`
+	ChecksumsPath string   `json:"checksumsPath"`
+	Warnings      []string `json:"warnings,omitempty"`
+}
+
+type LocalReleaseSetReport struct {
+	Version      string               `json:"version"`
+	Platforms    []string             `json:"platforms"`
+	ReleaseDir   string               `json:"releaseDir"`
+	MetadataPath string               `json:"metadataPath"`
+	Reports      []LocalReleaseReport `json:"reports"`
+	Warnings     []string             `json:"warnings,omitempty"`
 }
 
 type ReleaseVersion struct {

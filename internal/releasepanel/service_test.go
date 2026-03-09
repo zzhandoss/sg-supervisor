@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"sg-supervisor/internal/config"
 )
 
 func TestServiceStatusIncludesGeneratedKeys(t *testing.T) {
@@ -81,7 +79,6 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 		jobs:    NewJobStore(layout),
 		assets:  newFakeAssetSource(t),
 		node:    newFakeNodeSource(t),
-		core:    fakeCoreBuilder{},
 		builder: fakeBinaryBuilder{},
 	}
 	job := Job{ID: "job-1", Type: JobTypeLocalRelease, Status: JobStatusRunning, Recipe: state.Recipe}
@@ -101,8 +98,8 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", "release-set.json")); err != nil {
 		t.Fatalf("expected release-set metadata: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", report.Platforms[0], payloadArtifactName("1.0.0", report.Platforms[0]))); err != nil {
-		t.Fatalf("expected payload bundle: %v", err)
+	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", report.Platforms[0], deliveryArtifactName("1.0.0", report.Platforms[0]))); err != nil {
+		t.Fatalf("expected delivery archive: %v", err)
 	}
 }
 
@@ -124,6 +121,7 @@ func newFakeAssetSource(t *testing.T) *fakeAssetSource {
 	root := t.TempDir()
 	return &fakeAssetSource{
 		assets: map[string]string{
+			"school-gate-v1.2.0-source.zip":      writeZipArchive(t, filepath.Join(root, "school-gate-source.zip"), coreFiles()),
 			"dahua-adapter-v0.2.0-win-x64.zip":   writeZipArchive(t, filepath.Join(root, "adapter-win.zip"), adapterFiles()),
 			"dahua-adapter-v0.2.0-linux-x64.zip": writeZipArchive(t, filepath.Join(root, "adapter-linux.zip"), adapterFiles()),
 		},
@@ -142,30 +140,17 @@ type fakeNodeSource struct {
 	assets map[string]string
 }
 
-type fakeCoreBuilder struct{}
-
-func (fakeCoreBuilder) BuildInstallTree(_ context.Context, _ Recipe, _ string, workspaceRoot string, _ func(string)) error {
-	layout := config.NewLayout(workspaceRoot)
-	for path, body := range coreFiles() {
-		trimmed := strings.TrimPrefix(path, "school-gate-v1.2.0/")
-		target := filepath.Join(layout.InstallDir, "core", filepath.FromSlash(trimmed))
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func newFakeNodeSource(t *testing.T) *fakeNodeSource {
 	t.Helper()
 	root := t.TempDir()
 	return &fakeNodeSource{
 		assets: map[string]string{
-			"windows": writeZipArchive(t, filepath.Join(root, "node-win.zip"), map[string]string{"node-v20.19.0-win-x64/node.exe": "node"}),
-			"linux":   writeTarGzArchive(t, filepath.Join(root, "node-linux.tar.gz"), map[string]string{"node-v20.19.0-linux-x64/bin/node": "node"}),
+			"windows": writeZipArchive(t, filepath.Join(root, "node-win.zip"), map[string]string{
+				"node-v20.19.0-win-x64/node.exe":                               "node",
+				"node-v20.19.0-win-x64/corepack.cmd":                           "corepack",
+				"node-v20.19.0-win-x64/node_modules/corepack/dist/corepack.js": "corepack-js",
+			}),
+			"linux": writeTarGzArchive(t, filepath.Join(root, "node-linux.tar.gz"), map[string]string{"node-v20.19.0-linux-x64/bin/node": "node"}),
 		},
 	}
 }

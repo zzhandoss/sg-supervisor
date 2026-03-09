@@ -16,7 +16,7 @@ func (a *App) InstallPackage(ctx context.Context, packageID, binaryPath string) 
 	if err != nil {
 		return control.InstallReport{PackageID: packageID}, err
 	}
-	return a.installActivePackage(ctx, active.PackageID, binaryPath)
+	return a.installActivePackage(ctx, active.PackageID, binaryPath, true)
 }
 
 func (a *App) Repair(ctx context.Context, binaryPath string) (control.RepairReport, error) {
@@ -62,14 +62,6 @@ func (a *App) Repair(ctx context.Context, binaryPath string) (control.RepairRepo
 	}
 	report.ActivePackageID = active.PackageID
 	report.NeedsPackageInstall = active.PackageID == ""
-	if err := a.refreshPackagingManifests(ctx, rendered, active.PackageID, active.PackageID); err != nil {
-		report.Issues = append(report.Issues, control.Issue{
-			Step:     "refresh-packaging-manifests",
-			Severity: "error",
-			Message:  err.Error(),
-		})
-		return report, errors.New("repair completed with issues")
-	}
 	report.Completed = true
 	return report, nil
 }

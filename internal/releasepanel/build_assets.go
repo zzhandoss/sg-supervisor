@@ -3,12 +3,14 @@ package releasepanel
 import (
 	"context"
 	"path/filepath"
-
-	"sg-supervisor/internal/release"
 )
 
 func (s *Service) downloadAssets(ctx context.Context, state State, platform string) (WorkspaceAssets, error) {
 	cacheDir := filepath.Join(s.layout.CacheDir, "downloads")
+	sourcePath, err := s.assets.DownloadReleaseAsset(ctx, schoolGateSourceSpec(state.Recipe), filepath.Join(cacheDir, "school-gate", trimVersion(state.Recipe.SchoolGateVersion), "source"))
+	if err != nil {
+		return WorkspaceAssets{}, err
+	}
 	adapterPath, err := s.assets.DownloadReleaseAsset(ctx, AssetSpec{
 		Repo:    RepoAdapter,
 		Tag:     normalizeTag(state.Recipe.AdapterVersion),
@@ -21,19 +23,11 @@ func (s *Service) downloadAssets(ctx context.Context, state State, platform stri
 	if err != nil {
 		return WorkspaceAssets{}, err
 	}
-	return WorkspaceAssets{AdapterPath: adapterPath, NodePath: nodePath}, nil
-}
-
-func copyReleaseReport(root, version string, report release.Report) (release.Report, error) {
-	targetDir := filepath.Join(root, "releases", "v"+trimVersion(version), report.Platform)
-	if err := copyDir(report.ReleaseDir, targetDir); err != nil {
-		return release.Report{}, err
-	}
-	report.ReleaseDir = targetDir
-	report.ArtifactPath = filepath.Join(targetDir, filepath.Base(report.ArtifactPath))
-	report.MetadataPath = filepath.Join(targetDir, filepath.Base(report.MetadataPath))
-	report.ChecksumsPath = filepath.Join(targetDir, filepath.Base(report.ChecksumsPath))
-	return report, nil
+	return WorkspaceAssets{
+		SchoolGateSourcePath: sourcePath,
+		AdapterPath:          adapterPath,
+		NodePath:             nodePath,
+	}, nil
 }
 
 func adapterAssetPattern(version, platform string) string {
@@ -42,6 +36,15 @@ func adapterAssetPattern(version, platform string) string {
 		return base + "-win-x64.zip"
 	}
 	return base + "-linux-x64.zip"
+}
+
+func schoolGateSourceSpec(recipe Recipe) AssetSpec {
+	version := trimVersion(recipe.SchoolGateVersion)
+	return AssetSpec{
+		Repo:    RepoSchoolGate,
+		Tag:     normalizeTag(recipe.SchoolGateVersion),
+		Pattern: "school-gate-v" + version + "-source.zip",
+	}
 }
 
 func trimVersion(version string) string {

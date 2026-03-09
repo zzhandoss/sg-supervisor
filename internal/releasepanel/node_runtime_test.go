@@ -12,6 +12,7 @@ func TestPrepareNodeRuntimeWindows(t *testing.T) {
 		filepath.Join(root, "node.exe"),
 		filepath.Join(root, "LICENSE"),
 		filepath.Join(root, "node_modules", "npm", "package.json"),
+		filepath.Join(root, "node_modules", "corepack", "dist", "corepack.js"),
 		filepath.Join(root, "corepack.cmd"),
 	} {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -29,14 +30,15 @@ func TestPrepareNodeRuntimeWindows(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join(root, "node.exe"),
 		filepath.Join(root, "LICENSE"),
+		filepath.Join(root, "corepack.cmd"),
+		filepath.Join(root, "node_modules", "corepack", "dist", "corepack.js"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected file to remain: %s (%v)", path, err)
 		}
 	}
 	for _, path := range []string{
-		filepath.Join(root, "node_modules"),
-		filepath.Join(root, "corepack.cmd"),
+		filepath.Join(root, "node_modules", "npm"),
 	} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("expected path to be removed: %s", path)

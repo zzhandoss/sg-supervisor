@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"sg-supervisor/internal/bootstrap"
 	"sg-supervisor/internal/license"
 	"sg-supervisor/internal/runtime"
 )
@@ -37,6 +38,7 @@ type StatusResponse struct {
 	ImportedPackages []PackageRecord         `json:"importedPackages"`
 	ActivePackage    ActivePackageRecord     `json:"activePackage"`
 	ProductConfig    ProductConfigStatus     `json:"productConfig"`
+	Bootstrap        bootstrap.Status        `json:"bootstrap"`
 }
 
 type PackageRecord struct {
@@ -88,6 +90,8 @@ type HandlerDependencies struct {
 	ImportPackageBundle        func(context.Context, string) (PackageRecord, error)
 	ApplyLocalBundle           func(context.Context, string) (ActivePackageRecord, error)
 	ApplyPackage               func(context.Context, string) (ActivePackageRecord, error)
+	BootstrapStatus            func(context.Context) (bootstrap.Status, error)
+	StartBootstrap             func(context.Context) (bootstrap.Status, error)
 	UpdateSetupField           SetupFieldUpdater
 	UpdateProductConfig        ProductConfigUpdater
 	InstallPackage             Installer

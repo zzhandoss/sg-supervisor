@@ -33,16 +33,20 @@ function wireCoreForms() {
       path: form.path.value.trim(),
     })
   );
-  bindSubmit("local-bundle-apply-form", (form) =>
-    api("/api/v1/updates/apply-local-bundle", {
-      path: form.path.value.trim(),
-    })
-  );
   bindSubmit("package-apply-form", (form) =>
     api("/api/v1/updates/apply", {
       packageId: form.packageId.value.trim(),
     })
   );
+  const bootstrapButton = document.getElementById("bootstrap-start-button");
+  if (bootstrapButton) {
+    bootstrapButton.addEventListener("click", async () => {
+      await runAction(
+        () => api("/api/v1/bootstrap/start", {}),
+        "Bootstrap installation started"
+      );
+    });
+  }
 }
 
 function bindSubmit(formId, action) {
@@ -113,6 +117,7 @@ function renderStatus(status) {
   renderOverviewDetails(status);
   renderSetupStatus(status);
   renderProductConfigStatus(status.productConfig);
+  renderBootstrapStatus(status.bootstrap);
   renderServicesStatus(status.services || []);
   renderUpdateStatus(status);
 }

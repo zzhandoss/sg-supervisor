@@ -50,6 +50,12 @@ function buildNextStep(status) {
       detail: "Core services stay blocked until activation is complete.",
     };
   }
+  if (status.bootstrap?.state !== "succeeded") {
+    return {
+      title: "Run bootstrap installation from the extracted delivery archive.",
+      detail: `Current bootstrap state: ${status.bootstrap?.state || "idle"}.`,
+    };
+  }
   if (status.setupRequired) {
     return {
       title: "Finish the required setup items.",
@@ -58,14 +64,40 @@ function buildNextStep(status) {
   }
   if (!status.activePackage?.packageId) {
     return {
-      title: "Apply the local delivery bundle or import a package.",
-      detail: "Use the payload zip from the customer delivery archive if this is a fresh installation.",
+      title: "Complete bootstrap and then install or apply a package only if you need updates.",
+      detail: "Fresh setup now starts from the extracted delivery archive, not from a local payload zip.",
     };
   }
   return {
     title: "Panel is ready for routine operations.",
     detail: "Use service actions, package updates, and maintenance only when needed.",
   };
+}
+
+function renderBootstrapStatus(status) {
+  const summary = document.getElementById("bootstrap-summary");
+  const steps = document.getElementById("bootstrap-steps");
+  if (!status) {
+    summary.textContent = "Bootstrap status is unavailable.";
+    steps.innerHTML = "";
+    return;
+  }
+  summary.innerHTML = `
+    <strong>State:</strong> ${escapeHTML(status.state || "idle")}
+    <span class="meta-line">Current step: ${escapeHTML(status.currentStep || "none")}</span>
+    <span class="meta-line">Source: ${escapeHTML(status.sourceArchivePath || "not detected")}</span>
+    <span class="meta-line">Adapter: ${escapeHTML(status.adapterArchivePath || "not detected")}</span>
+    <span class="meta-line">Error: ${escapeHTML(status.error || "none")}</span>
+  `;
+  steps.innerHTML = (status.steps || []).map((step) => `
+    <article class="setup-card">
+      <div class="pill-row">
+        ${pill(step.state || "pending", step.state || "pending")}
+      </div>
+      <h3>${escapeHTML(step.name)}</h3>
+      <p class="meta-line">${escapeHTML(step.message || "waiting")}</p>
+    </article>
+  `).join("");
 }
 
 function renderSetupStatus(status) {

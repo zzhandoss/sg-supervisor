@@ -14,7 +14,6 @@ type Service struct {
 	owner    *OwnerStore
 	assets   AssetSource
 	node     NodeSource
-	core     CoreBuilder
 	builder  BinaryBuilder
 	executor Executor
 	mu       sync.Mutex
@@ -35,7 +34,6 @@ func NewService(root, repoRoot string) (*Service, error) {
 		owner:    NewOwnerStore(layout),
 		assets:   NewGitHubAssetSource(executor),
 		node:     NewNodeDistSource(),
-		core:     NewSchoolGateCoreBuilder(executor, NewGitHubAssetSource(executor)),
 		builder:  NewGoBinaryBuilder(executor),
 		executor: executor,
 	}, nil

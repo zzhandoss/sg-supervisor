@@ -15,6 +15,7 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("/api/v1/updates/import-bundle", s.handleBundleImport)
 	mux.HandleFunc("/api/v1/updates/apply-local-bundle", s.handleApplyLocalBundle)
 	mux.HandleFunc("/api/v1/updates/apply", s.handleApplyPackage)
+	mux.HandleFunc("/api/v1/bootstrap/start", s.handleBootstrapStart)
 	mux.HandleFunc("/api/v1/setup/fields", s.handleSetupFieldUpdate)
 	mux.HandleFunc("/api/v1/product-config", s.handleProductConfigUpdate)
 	mux.HandleFunc("/api/v1/install", s.handleInstallPackage)

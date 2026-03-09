@@ -7,6 +7,15 @@
 - `blocked`
 - `done`
 
+## 2026-03-09
+
+### done
+
+- validated the new Windows delivery model end-to-end from the extracted `school-gate-delivery-v1.0.13-e2e-windows-x64.zip` without MSI: `sg-supervisor` started from the extracted directory, discovered local payload archives, prepared `pnpm` through bundled Node/corepack, installed dependencies, built `school-gate`, deployed runnable app layouts, and extracted the adapter runtime
+- fixed Windows bootstrap command execution by normalizing supervisor `root` to an absolute path inside `app.New`, which removed relative-path failures when invoking `corepack.cmd` and later bootstrap commands from the extracted delivery root
+- confirmed that the resulting bootstrap state reaches `succeeded` and materializes `install/core`, `install/adapters/dahua-terminal-adapter`, and `admin-ui` static assets in the target root
+- revalidated the absolute-root bootstrap fix with `go test ./...`, `go build ./cmd/sg-supervisor`, and a real Windows bootstrap run against `.tmp/e2e/v1.0.13-e2e`
+
 ## 2026-03-07
 
 ### done
@@ -156,3 +165,10 @@
 - added `bootstrap-install` CLI flow in `sg-supervisor` that locates a local payload bundle, applies it, and completes service registration in one step
 - wired Windows WiX output to run the installed supervisor as a post-install custom action against `[SourceDir]payload`, so fresh installs and MSI-based upgrades auto-apply the local payload bundle without requiring a manual panel step
 - revalidated the MSI auto-bootstrap slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`
+- removed the old `distribution/packaging/release` MSI/WiX pipeline, the related `sg-supervisor` CLI commands, and the temporary Windows bootstrap-install path after deciding to stop carrying the MSI-based installer model forward
+- rewired `sg-release-panel` local release output so it no longer depends on the removed release pipeline and now assembles a direct bootstrap zip plus delivery archive from release-panel code only
+- cleaned temporary `.tmp` workspace artifacts and root-level local build outputs from the repository workspace
+- rewired `sg-release-panel` again from `bootstrap package + payload bundle` to a single delivery zip that contains `sg-supervisor`, bundled Node, the `school-gate` source snapshot, the adapter artifact, and a delivery recipe
+- added a persistent bootstrap pipeline state in `sg-supervisor`, plus `POST /api/v1/bootstrap/start`, so Control Center can run the client-side `corepack/pnpm install/build/deploy` flow step-by-step on the target machine
+- added the first browser-facing bootstrap section in Control Center, so the operator can launch the local install/build pipeline from the extracted delivery directory and watch step state without touching CLI commands
+- revalidated the source-bootstrap slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`

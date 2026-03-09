@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"path/filepath"
+	"sync"
 
+	"sg-supervisor/internal/bootstrap"
 	"sg-supervisor/internal/config"
 	"sg-supervisor/internal/control"
 	"sg-supervisor/internal/license"
@@ -15,18 +17,25 @@ import (
 )
 
 type App struct {
-	root    string
-	layout  config.Layout
-	cfg     config.SupervisorConfig
-	license *license.Store
-	product *config.ProductStore
-	runtime *runtime.Manager
-	setup   *setup.Store
-	updates *updates.Store
-	runner  servicehost.Runner
+	root        string
+	layout      config.Layout
+	cfg         config.SupervisorConfig
+	license     *license.Store
+	product     *config.ProductStore
+	runtime     *runtime.Manager
+	setup       *setup.Store
+	updates     *updates.Store
+	runner      servicehost.Runner
+	bootstrap   *bootstrap.Store
+	bootstrapMu sync.Mutex
 }
 
 func New(root string) (*App, error) {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	root = absRoot
 	layout := config.NewLayout(root)
 	cfg, err := config.LoadOrCreate(layout.ConfigFile)
 	if err != nil {
@@ -46,15 +55,16 @@ func New(root string) (*App, error) {
 	}
 	catalog = config.ApplyProductConfig(layout, catalog, productCfg)
 	return &App{
-		root:    root,
-		layout:  layout,
-		cfg:     cfg,
-		license: license.NewStore(layout, cfg),
-		product: product,
-		runtime: runtime.NewManager(catalog),
-		setup:   setup.NewStore(layout),
-		updates: updates.NewStore(layout, cfg),
-		runner:  servicehost.ExecRunner{},
+		root:      root,
+		layout:    layout,
+		cfg:       cfg,
+		license:   license.NewStore(layout, cfg),
+		product:   product,
+		runtime:   runtime.NewManager(catalog),
+		setup:     setup.NewStore(layout),
+		updates:   updates.NewStore(layout, cfg),
+		runner:    servicehost.ExecRunner{},
+		bootstrap: bootstrap.NewStore(layout),
 	}, nil
 }
 
@@ -72,6 +82,9 @@ func (a *App) EnsureBootstrap(ctx context.Context) error {
 		return err
 	}
 	if err := a.setup.Ensure(ctx); err != nil {
+		return err
+	}
+	if err := a.bootstrap.Ensure(); err != nil {
 		return err
 	}
 	return a.syncRuntimeConfig()
@@ -107,6 +120,10 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 	if err != nil {
 		return control.StatusResponse{}, err
 	}
+	bootstrapStatus, err := a.BootstrapStatus(ctx)
+	if err != nil {
+		return control.StatusResponse{}, err
+	}
 
 	return control.StatusResponse{
 		ProductName:   a.cfg.ProductName,
@@ -131,6 +148,7 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 		ImportedPackages: mapPackageRecords(importedPackages),
 		ActivePackage:    mapActivePackage(activePackage),
 		ProductConfig:    productConfig,
+		Bootstrap:        bootstrapStatus,
 	}, nil
 }
 
@@ -246,6 +264,8 @@ func (a *App) Serve(ctx context.Context, listen string) error {
 			}
 			return mapActivePackage(record), nil
 		},
+		BootstrapStatus:            a.BootstrapStatus,
+		StartBootstrap:             a.StartBootstrap,
 		UpdateSetupField:           a.UpdateSetupField,
 		UpdateProductConfig:        a.UpdateProductConfig,
 		InstallPackage:             a.InstallPackage,

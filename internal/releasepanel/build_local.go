@@ -8,9 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"sg-supervisor/internal/app"
-	"sg-supervisor/internal/release"
 )
 
 func (s *Service) StartLocalRelease(ctx context.Context) (Job, error) {
@@ -67,71 +64,56 @@ func (s *Service) runLocalRelease(ctx context.Context, job Job, state State) {
 	_ = s.jobs.Save(job)
 }
 
-func (s *Service) buildLocalRelease(ctx context.Context, job *Job, state State) (release.SetReport, error) {
+func (s *Service) buildLocalRelease(ctx context.Context, job *Job, state State) (LocalReleaseSetReport, error) {
 	versionDir := filepath.Join(s.layout.ReleasesDir, "v"+state.Recipe.InstallerVersion)
 	if _, err := os.Stat(versionDir); err == nil {
-		return release.SetReport{}, errors.New("release version already exists: " + versionDir)
+		return LocalReleaseSetReport{}, errors.New("release version already exists: " + versionDir)
 	}
 	platform, err := hostPlatform()
 	if err != nil {
-		return release.SetReport{}, err
+		return LocalReleaseSetReport{}, err
 	}
 	job.Logs = append(job.Logs, "building local installer for host platform "+platform)
 	_ = s.jobs.Save(*job)
 	report, err := s.buildPlatformRelease(ctx, job, state, platform)
 	if err != nil {
-		return release.SetReport{}, err
+		return LocalReleaseSetReport{}, err
 	}
-	return release.BuildSet(s.layout.Root, state.Recipe.InstallerVersion, []release.Report{report})
+	return buildLocalReleaseSet(s.layout.Root, state.Recipe.InstallerVersion, []LocalReleaseReport{report})
 }
 
-func (s *Service) buildPlatformRelease(ctx context.Context, job *Job, state State, platform string) (release.Report, error) {
+func (s *Service) buildPlatformRelease(ctx context.Context, job *Job, state State, platform string) (LocalReleaseReport, error) {
 	job.Logs = append(job.Logs, "preparing "+platform+" workspace")
 	_ = s.jobs.Save(*job)
 	workspaceRoot := filepath.Join(s.layout.WorkspacesDir, job.ID, platform)
 	if err := os.RemoveAll(workspaceRoot); err != nil {
-		return release.Report{}, err
+		return LocalReleaseReport{}, err
 	}
 	assets, err := s.downloadAssets(ctx, state, platform)
 	if err != nil {
-		return release.Report{}, errors.New("asset download failed for " + platform + ": " + err.Error())
-	}
-	if err := s.core.BuildInstallTree(ctx, state.Recipe, s.layout.CacheDir, workspaceRoot, func(message string) {
-		job.Logs = append(job.Logs, message)
-		_ = s.jobs.Save(*job)
-	}); err != nil {
-		return release.Report{}, errors.New("core assembly failed for " + platform + ": " + err.Error())
-	}
-	if err := prepareWorkspace(workspaceRoot, assets); err != nil {
-		return release.Report{}, errors.New("workspace preparation failed for " + platform + ": " + err.Error())
-	}
-	payloadBundlePath := filepath.Join(workspaceRoot, "payload", payloadArtifactName(trimVersion(state.Recipe.InstallerVersion), platform))
-	job.Logs = append(job.Logs, "building local payload bundle")
-	_ = s.jobs.Save(*job)
-	if _, err := buildLocalPayloadBundle(ctx, workspaceRoot, state, payloadBundlePath); err != nil {
-		return release.Report{}, errors.New("payload bundle build failed for " + platform + ": " + err.Error())
+		return LocalReleaseReport{}, errors.New("asset download failed for " + platform + ": " + err.Error())
 	}
 	bootstrapRoot := filepath.Join(workspaceRoot, "bootstrap")
 	if err := prepareBootstrapWorkspace(bootstrapRoot, platform, state, assets); err != nil {
-		return release.Report{}, errors.New("bootstrap workspace preparation failed for " + platform + ": " + err.Error())
+		return LocalReleaseReport{}, errors.New("bootstrap workspace preparation failed for " + platform + ": " + err.Error())
 	}
 	binaryPath := filepath.Join(workspaceRoot, "binaries", supervisorBinaryName(platform))
 	if err := s.builder.BuildSupervisor(ctx, state.RepoRoot, platform, binaryPath); err != nil {
-		return release.Report{}, errors.New("supervisor build failed for " + platform + ": " + err.Error())
+		return LocalReleaseReport{}, errors.New("supervisor build failed for " + platform + ": " + err.Error())
 	}
-	supervisor, err := app.New(bootstrapRoot)
-	if err != nil {
-		return release.Report{}, errors.New("workspace bootstrap failed for " + platform + ": " + err.Error())
+	targetBinaryPath := filepath.Join(bootstrapRoot, filepath.Base(binaryPath))
+	if err := copyArtifact(binaryPath, targetBinaryPath); err != nil {
+		return LocalReleaseReport{}, errors.New("bootstrap workspace preparation failed for " + platform + ": " + err.Error())
 	}
-	job.Logs = append(job.Logs, "building bootstrap installer")
+	job.Logs = append(job.Logs, "building bootstrap package")
 	_ = s.jobs.Save(*job)
-	report, err := supervisor.BuildRelease(ctx, platform, state.Recipe.InstallerVersion, binaryPath)
-	if err != nil {
-		return release.Report{}, errors.New("release build failed for " + platform + ": " + err.Error())
-	}
 	job.Logs = append(job.Logs, "assembling delivery archive")
 	_ = s.jobs.Save(*job)
-	return buildDeliveryRelease(ctx, s.layout.Root, state.Recipe.InstallerVersion, platform, report.ArtifactPath, payloadBundlePath, report.Warnings)
+	deliveryRoot, err := prepareDeliveryRoot(bootstrapRoot, state, assets)
+	if err != nil {
+		return LocalReleaseReport{}, errors.New("delivery root preparation failed for " + platform + ": " + err.Error())
+	}
+	return buildDeliveryRelease(ctx, s.layout.Root, state.Recipe.InstallerVersion, platform, deliveryRoot, nil)
 }
 
 func supervisorBinaryName(platform string) string {

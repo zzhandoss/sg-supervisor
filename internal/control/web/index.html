@@ -89,6 +89,19 @@
           </form>
         </section>
 
+        <section class="panel" aria-labelledby="bootstrap-title">
+          <div class="panel-head">
+            <p class="panel-kicker">Bootstrap</p>
+            <h2 id="bootstrap-title">Install application from local delivery files</h2>
+            <p class="section-copy">Use this once after extracting the delivery archive. The supervisor will install dependencies, build the apps, and prepare the adapter on this machine.</p>
+          </div>
+          <div id="bootstrap-summary" class="summary-row">Bootstrap has not started yet.</div>
+          <div class="button-row">
+            <button id="bootstrap-start-button" type="button">Start bootstrap installation</button>
+          </div>
+          <div id="bootstrap-steps" class="stack"></div>
+        </section>
+
         <section class="panel" aria-labelledby="services-title">
           <div class="panel-head">
             <p class="panel-kicker">Application</p>
@@ -118,13 +131,6 @@
                 <input name="path" type="text" placeholder="C:\packages\bundle.zip" required />
               </label>
               <button type="submit">Import bundle</button>
-            </form>
-            <form id="local-bundle-apply-form" class="stack form-block">
-              <label>
-                <span>Local delivery bundle path</span>
-                <input name="path" type="text" placeholder="C:\delivery\school-gate-package-v1.0.0-windows-x64.zip" required />
-              </label>
-              <button type="submit">Import and apply local bundle</button>
             </form>
             <form id="package-apply-form" class="stack form-block">
               <label>
