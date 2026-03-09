@@ -34,6 +34,30 @@ func runInstallPackage(ctx context.Context, args []string) error {
 	return nil
 }
 
+func runBootstrapInstall(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("bootstrap-install", flag.ContinueOnError)
+	root := fs.String("root", ".", "supervisor root")
+	bundleDir := fs.String("bundle-dir", "", "directory containing the local payload bundle")
+	binaryPath := fs.String("binary", "", "supervisor binary path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *bundleDir == "" {
+		return errors.New("bundle-dir is required")
+	}
+
+	supervisor, err := app.New(*root)
+	if err != nil {
+		return err
+	}
+	report, err := supervisor.BootstrapInstall(ctx, *bundleDir, *binaryPath)
+	if err != nil {
+		return err
+	}
+	fmt.Println(report.ActivePackageID)
+	return nil
+}
+
 func runRepair(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("repair", flag.ContinueOnError)
 	root := fs.String("root", ".", "supervisor root")

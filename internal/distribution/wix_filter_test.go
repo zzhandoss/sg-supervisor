@@ -30,6 +30,12 @@ func TestRenderWiXSourceSkipsDevArtifacts(t *testing.T) {
 	if !strings.Contains(source, "index.js") {
 		t.Fatalf("expected runtime file in wix source")
 	}
+	if !strings.Contains(source, "bootstrap-install") {
+		t.Fatalf("expected wix source to include bootstrap install custom action")
+	}
+	if !strings.Contains(source, `[SourceDir]payload`) {
+		t.Fatalf("expected wix source to reference payload source directory")
+	}
 	for _, fragment := range []string{"index.d.ts", "index.js.map", "README.md", "spec.test.js"} {
 		if strings.Contains(source, fragment) {
 			t.Fatalf("expected wix source to skip %s", fragment)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"archive/zip"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"sg-supervisor/internal/config"
+	"sg-supervisor/internal/manifest"
 	"sg-supervisor/internal/servicehost"
 )
 
@@ -85,6 +87,50 @@ func TestInstallPackageExecutesServiceHostActions(t *testing.T) {
 	}
 	assertPackagingManifest(t, supervisor.root, "linux")
 	assertPackagingManifest(t, supervisor.root, "windows")
+}
+
+func TestBootstrapInstallAppliesLocalBundleAndRegistersService(t *testing.T) {
+	supervisor, privateKey := newSignedTestApp(t)
+	runner := &recordingRunner{}
+	supervisor.runner = runner
+
+	bundleDir := filepath.Join(supervisor.root, "delivery", "payload")
+	if err := os.MkdirAll(bundleDir, 0o755); err != nil {
+		t.Fatalf("mkdir bundle dir: %v", err)
+	}
+
+	layout := config.NewLayout(supervisor.root)
+	if err := os.MkdirAll(filepath.Join(layout.InstallDir, "core", "apps", "api", "dist"), 0o755); err != nil {
+		t.Fatalf("mkdir core: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter", "dist", "src"), 0o755); err != nil {
+		t.Fatalf("mkdir adapter: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(layout.InstallDir, "core", "apps", "api", "dist", "index.js"), []byte("api"), 0o644); err != nil {
+		t.Fatalf("write core file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter", "dist", "src", "index.js"), []byte("adapter"), 0o644); err != nil {
+		t.Fatalf("write adapter file: %v", err)
+	}
+
+	bundlePath := filepath.Join(bundleDir, "school-gate-package-v1.0.0-windows-x64.zip")
+	if err := writeSignedBundle(bundlePath, privateKey, map[string]string{
+		"payload/core/apps/api/dist/index.js":                       "api",
+		"payload/adapters/dahua-terminal-adapter/dist/src/index.js": "adapter",
+	}); err != nil {
+		t.Fatalf("build payload bundle: %v", err)
+	}
+
+	report, err := supervisor.BootstrapInstall(context.Background(), bundleDir, filepath.Join(supervisor.root, "sg-supervisor.exe"))
+	if err != nil {
+		t.Fatalf("bootstrap install: %v", err)
+	}
+	if report.ActivePackageID == "" {
+		t.Fatalf("expected active package id")
+	}
+	if len(runner.actions) == 0 {
+		t.Fatalf("expected bootstrap install to execute service-host actions")
+	}
 }
 
 func TestInstallPackageReturnsPartialReportOnServiceRegistrationFailure(t *testing.T) {
@@ -233,6 +279,61 @@ func newSignedTestApp(t *testing.T) (*App, ed25519.PrivateKey) {
 		t.Fatalf("new app: %v", err)
 	}
 	return supervisor, privateKey
+}
+
+func writeSignedBundle(path string, privateKey ed25519.PrivateKey, payloadFiles map[string]string) error {
+	file := manifest.File{
+		ProductVersion:    "1.0.0",
+		CoreVersion:       "1.2.0",
+		SupervisorVersion: "0.1.0",
+		Runtime: manifest.Runtime{
+			NodeVersion: "20.19.0",
+		},
+		Adapters: []manifest.AdapterBundle{
+			{Key: "dahua-terminal-adapter", Version: "0.2.0", Required: true},
+		},
+		Compatibility: manifest.Compatibility{
+			CoreAPI:    1,
+			AdapterAPI: 1,
+		},
+	}
+	manifestData, err := json.MarshalIndent(file, "", "  ")
+	if err != nil {
+		return err
+	}
+	manifestData = append(manifestData, '\n')
+	signature := ed25519.Sign(privateKey, manifestData)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	archive, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer archive.Close()
+	writer := zip.NewWriter(archive)
+	defer writer.Close()
+	if err := writeBundleZipEntry(writer, "manifest.json", manifestData); err != nil {
+		return err
+	}
+	if err := writeBundleZipEntry(writer, "manifest.sig", []byte(base64.StdEncoding.EncodeToString(signature)+"\n")); err != nil {
+		return err
+	}
+	for name, body := range payloadFiles {
+		if err := writeBundleZipEntry(writer, name, []byte(body)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeBundleZipEntry(writer *zip.Writer, name string, data []byte) error {
+	record, err := writer.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = record.Write(data)
+	return err
 }
 
 func assertPackagingManifest(t *testing.T, root, platform string) {

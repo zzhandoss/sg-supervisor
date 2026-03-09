@@ -153,3 +153,6 @@
 - supervisor gained a direct `apply-local-bundle` flow so the installed Control Center can import and apply the payload zip from the extracted delivery archive in one step
 - reduced the full release workspace footprint by removing bundled Node extraction from the product-payload workspace; Node is now staged only for the bootstrap installer workspace
 - revalidated the delivery-pivot slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`
+- added `bootstrap-install` CLI flow in `sg-supervisor` that locates a local payload bundle, applies it, and completes service registration in one step
+- wired Windows WiX output to run the installed supervisor as a post-install custom action against `[SourceDir]payload`, so fresh installs and MSI-based upgrades auto-apply the local payload bundle without requiring a manual panel step
+- revalidated the MSI auto-bootstrap slice with `go test ./...`, `go build ./cmd/sg-supervisor`, and `go build ./cmd/sg-release-panel`

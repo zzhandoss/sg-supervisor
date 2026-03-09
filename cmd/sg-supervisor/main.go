@@ -23,7 +23,7 @@ func main() {
 
 func run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("expected command: init-layout | status | generate-activation-request | import-license | import-package-manifest | import-package-bundle | apply-package | set-setup-field | install-package | repair | uninstall | assemble-package | build-distribution | build-release | build-release-set | render-service-host | serve")
+		return errors.New("expected command: init-layout | status | generate-activation-request | import-license | import-package-manifest | import-package-bundle | apply-package | bootstrap-install | set-setup-field | install-package | repair | uninstall | assemble-package | build-distribution | build-release | build-release-set | render-service-host | serve")
 	}
 
 	switch args[0] {
@@ -41,6 +41,8 @@ func run(ctx context.Context, args []string) error {
 		return runImportPackageBundle(ctx, args[1:])
 	case "apply-package":
 		return runApplyPackage(ctx, args[1:])
+	case "bootstrap-install":
+		return runBootstrapInstall(ctx, args[1:])
 	case "set-setup-field":
 		return runSetSetupField(ctx, args[1:])
 	case "install-package":

@@ -12,43 +12,11 @@ import (
 )
 
 func (a *App) InstallPackage(ctx context.Context, packageID, binaryPath string) (control.InstallReport, error) {
-	report := control.InstallReport{PackageID: packageID}
 	active, err := a.ApplyPackage(ctx, packageID)
 	if err != nil {
-		return report, err
+		return control.InstallReport{PackageID: packageID}, err
 	}
-	report.ActivePackageID = active.PackageID
-	rendered, err := a.renderServiceHost(ctx, binaryPath)
-	if err != nil {
-		report.Issues = append(report.Issues, control.Issue{
-			Step:     "render-service-host",
-			Severity: "error",
-			Message:  err.Error(),
-		})
-		return report, errors.New("install completed with issues")
-	}
-	serviceHost := mapServiceHostArtifacts(rendered)
-	report.ServiceName = serviceHost.ServiceName
-	report.WrittenFiles = serviceHost.WrittenFiles
-	report.InstallHints = serviceHost.InstallHints
-	if err := servicehost.ExecuteInstall(ctx, rendered.Plan, a.runner); err != nil {
-		report.Issues = append(report.Issues, control.Issue{
-			Step:     "service-registration",
-			Severity: "error",
-			Message:  err.Error(),
-		})
-		return report, errors.New("install completed with issues")
-	}
-	if err := a.refreshPackagingManifests(ctx, rendered, packageID, active.PackageID); err != nil {
-		report.Issues = append(report.Issues, control.Issue{
-			Step:     "refresh-packaging-manifests",
-			Severity: "error",
-			Message:  err.Error(),
-		})
-		return report, errors.New("install completed with issues")
-	}
-	report.Completed = true
-	return report, nil
+	return a.installActivePackage(ctx, active.PackageID, binaryPath)
 }
 
 func (a *App) Repair(ctx context.Context, binaryPath string) (control.RepairReport, error) {

@@ -16,6 +16,7 @@ func renderWiXSource(stageDir string) string {
 		stageRoot = absoluteStageDir
 	}
 	tree := buildWiXTree(stageRoot)
+	supervisorFileID := wiXID("fil_supervisor/sg-supervisor.exe")
 	return strings.Join([]string{
 		`<?xml version="1.0" encoding="UTF-8"?>`,
 		`<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">`,
@@ -30,6 +31,10 @@ func renderWiXSource(stageDir string) string {
 		`    <Feature Id="MainFeature" Title="School Gate" Level="1">`,
 		renderWiXComponentRefs(tree),
 		`    </Feature>`,
+		`    <CustomAction Id="BootstrapInstall" FileRef="` + supervisorFileID + `" ExeCommand='bootstrap-install --root "[INSTALLFOLDER]" --bundle-dir "[SourceDir]payload"' Execute="deferred" Impersonate="no" Return="check" />`,
+		`    <InstallExecuteSequence>`,
+		`      <Custom Action="BootstrapInstall" Before="InstallFinalize">NOT REMOVE</Custom>`,
+		`    </InstallExecuteSequence>`,
 		`  </Package>`,
 		`</Wix>`,
 		"",

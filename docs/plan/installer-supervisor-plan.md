@@ -49,6 +49,7 @@ Implemented in this repository:
 - network-aware derived application config for `VITE_API_BASE_URL` and default CORS origin lists
 - separate owner-only `sg-release-panel` binary with file-based state, embedded UI, local installer release workflow, and offline license issuance
 - local delivery model where owner builds a bootstrap installer plus a separate signed payload bundle instead of embedding the full app runtime tree into MSI payloads
+- Windows bootstrap installer can auto-apply the sibling local payload bundle from the extracted delivery archive during install/upgrade
 - project tracking documents
 
 Not implemented yet:
@@ -58,6 +59,7 @@ Not implemented yet:
 - binary extraction/replacement for updates
 - richer operator-facing rollback/recovery reporting around maintenance operations
 - richer first-install guidance that treats local payload apply as a bootstrap step rather than a generic update action
+- Linux auto-bootstrap from the extracted delivery payload has not been aligned with the new Windows install contract yet
 
 ## Directory model
 
@@ -81,6 +83,7 @@ Supervisor root uses the following managed directories:
 - Adapter updates may be delivered through installer-only updates without replacing the core bundle.
 - Invalid license blocks core runtime but does not need to block adapter startup.
 - Owner delivery now targets `bootstrap installer + local payload bundle`, so installer packaging stays small while the installed Control Center applies the product payload from a local archive.
+- Windows MSI now auto-invokes the installed supervisor against the sibling `payload/` directory so a non-technical operator can install from one extracted delivery package without a manual bundle-apply step.
 
 ## Implementation sequence
 
