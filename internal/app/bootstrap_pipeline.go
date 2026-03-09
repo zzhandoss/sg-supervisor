@@ -41,6 +41,7 @@ func (a *App) StartBootstrap(ctx context.Context) (bootstrap.Status, error) {
 			{Name: "build-school-gate", State: "pending"},
 			{Name: "deploy-school-gate", State: "pending"},
 			{Name: "prepare-adapter", State: "pending"},
+			{Name: "cleanup-workspace", State: "pending"},
 		},
 		StartedAt: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -86,6 +87,9 @@ func (a *App) runBootstrapPipeline(ctx context.Context) {
 		return
 	}
 	if err := a.prepareBootstrapAdapter(ctx, &status, assets); err != nil {
+		return
+	}
+	if err := a.cleanupBootstrapWorkspace(&status); err != nil {
 		return
 	}
 	status.State = "succeeded"

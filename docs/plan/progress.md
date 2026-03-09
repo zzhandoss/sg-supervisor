@@ -14,6 +14,8 @@
 - validated the new Windows delivery model end-to-end from the extracted `school-gate-delivery-v1.0.13-e2e-windows-x64.zip` without MSI: `sg-supervisor` started from the extracted directory, discovered local payload archives, prepared `pnpm` through bundled Node/corepack, installed dependencies, built `school-gate`, deployed runnable app layouts, and extracted the adapter runtime
 - fixed Windows bootstrap command execution by normalizing supervisor `root` to an absolute path inside `app.New`, which removed relative-path failures when invoking `corepack.cmd` and later bootstrap commands from the extracted delivery root
 - confirmed that the resulting bootstrap state reaches `succeeded` and materializes `install/core`, `install/adapters/dahua-terminal-adapter`, and `admin-ui` static assets in the target root
+- added a final `cleanup-workspace` bootstrap step that removes `runtime/bootstrap/source` and `runtime/bootstrap/deploy` after a successful install/build, while leaving the runnable `install/` tree intact
+- validated the cleanup step with a unit test and a second real Windows bootstrap run from a fresh extracted delivery directory, confirming that only `runtime/bootstrap/status.json` remains under the bootstrap workspace after success
 - revalidated the absolute-root bootstrap fix with `go test ./...`, `go build ./cmd/sg-supervisor`, and a real Windows bootstrap run against `.tmp/e2e/v1.0.13-e2e`
 
 ## 2026-03-07
