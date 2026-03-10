@@ -30,13 +30,16 @@ function renderProductConfigStatus(config) {
   if (!config) {
     return;
   }
-  document.getElementById("product-config-summary").innerHTML = `
-    <strong>Resolved host:</strong> ${escapeHTML(config.resolvedHost || "n/a")}
-    <span class="meta-line">Preferred host: ${escapeHTML(config.preferredHost || "auto")}</span>
-    <span class="meta-line">Bot token: ${config.telegramBotConfigured ? "configured" : "not configured"}</span>
-    <span class="meta-line">VITE_API_BASE_URL: ${escapeHTML(config.viteApiBaseUrl || "n/a")}</span>
-    <span class="meta-line">Admin UI: ${escapeHTML(config.adminUiUrl || "n/a")}</span>
-  `;
+  document.getElementById("product-config-summary").innerHTML = [
+    summaryLine("Current address", config.resolvedHost || "n/a"),
+    summaryLine("Preferred address", config.preferredHost || "automatic"),
+    summaryLine("Application address", config.viteApiBaseUrl || "n/a"),
+    summaryLine("Admin UI", config.adminUiUrl || "n/a"),
+  ].join("");
+  document.getElementById("bot-config-card").innerHTML = [
+    summaryLine("Telegram bot", config.telegramBotConfigured ? "connected" : "not connected"),
+    summaryLine("Current address", config.resolvedHost || "n/a"),
+  ].join("");
   document.getElementById("available-hosts").innerHTML = (config.availableHosts || [])
     .map((host) => `<option value="${escapeHTML(host)}"></option>`)
     .join("");

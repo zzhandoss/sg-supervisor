@@ -12,7 +12,7 @@ function wireMaintenanceForms() {
       },
       { allowPartial: true }
     );
-    renderMaintenanceResult("Install package", result);
+    renderMaintenanceResult("Install selected version", result);
     if (!result.ok) {
       throw new Error(result.error);
     }
@@ -38,7 +38,7 @@ function wireMaintenanceForms() {
       { mode: form.mode.value },
       { allowPartial: true }
     );
-    renderMaintenanceResult("Uninstall", result);
+    renderMaintenanceResult("Remove installation", result);
     if (!result.ok) {
       throw new Error(result.error);
     }
@@ -54,15 +54,15 @@ function renderMaintenanceResult(title, result) {
   );
   document.getElementById("maintenance-status").innerHTML = `
     <strong>${escapeHTML(title)}</strong>
-    <span class="meta-line">Outcome: ${result.ok ? "success" : "partial failure"}</span>
-    <span class="meta-line">Completed: ${report.completed ? "yes" : "no"}</span>
-    <span class="meta-line">Active package: ${escapeHTML(report.activePackageId || report.packageId || "n/a")}</span>
+    <span class="meta-line">Result: ${result.ok ? "success" : "needs attention"}</span>
+    <span class="meta-line">Finished: ${report.completed ? "yes" : "no"}</span>
+    <span class="meta-line">Version: ${escapeHTML(report.activePackageId || report.packageId || "n/a")}</span>
     <span class="meta-line">Changed paths: ${String((report.removedPaths || []).length + (report.ensuredPaths || []).length)}</span>
     <ul class="issue-list">${issues}</ul>
   `;
   document.getElementById("maintenance-details").innerHTML = [
-    renderMaintenanceCard("Paths", firstNonEmpty(report.removedPaths, report.ensuredPaths, report.writtenFiles), "No path changes reported"),
-    renderMaintenanceCard("Kept or touched", firstNonEmpty(report.keptPaths, report.serviceArtifacts, report.installHints), "No secondary details"),
+    renderMaintenanceCard("Changed files and folders", firstNonEmpty(report.removedPaths, report.ensuredPaths, report.writtenFiles), "No file changes reported"),
+    renderMaintenanceCard("Other details", firstNonEmpty(report.keptPaths, report.serviceArtifacts, report.installHints), "No additional details"),
     renderMaintenanceCard("Stopped services", report.stoppedServices || [], "No services were stopped"),
   ].join("");
 }

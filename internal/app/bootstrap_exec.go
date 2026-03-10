@@ -3,7 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -22,9 +22,9 @@ func runBootstrapCommand(ctx context.Context, dir string, env map[string]string,
 	if err := command.Run(); err != nil {
 		output := strings.TrimSpace(buffer.String())
 		if output == "" {
-			return "", err
+			return "", fmt.Errorf("%s %s failed: %w", name, strings.Join(args, " "), err)
 		}
-		return output, errors.New(output)
+		return output, fmt.Errorf("%s %s failed: %s", name, strings.Join(args, " "), output)
 	}
 	return strings.TrimSpace(buffer.String()), nil
 }

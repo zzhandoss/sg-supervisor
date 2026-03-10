@@ -45,6 +45,14 @@ h1, h2, p {
   color: #4b5563;
 }
 
+.result.success {
+  color: #166534;
+}
+
+.result.error {
+  color: #b91c1c;
+}
+
 .status-note {
   padding: 12px 14px;
   border-radius: 12px;
@@ -76,6 +84,7 @@ h1, h2, p {
 
 .grid-form {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: start;
 }
 
 label,
@@ -83,6 +92,14 @@ label,
 .license-card {
   display: grid;
   gap: 8px;
+}
+
+.license-field {
+  min-width: 0;
+}
+
+.license-field.is-hidden {
+  display: none;
 }
 
 input,
@@ -106,8 +123,14 @@ button.secondary {
   color: #0f172a;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .actions {
   align-content: end;
+  grid-column: 1 / -1;
 }
 
 .checkbox {
@@ -166,6 +189,10 @@ button.secondary {
 
 @media (max-width: 720px) {
   .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-form {
     grid-template-columns: 1fr;
   }
 }

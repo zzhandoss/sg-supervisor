@@ -21,8 +21,8 @@ func TestRenderWritesArtifacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render service host artifacts: %v", err)
 	}
-	if len(rendered.WrittenFiles) != 5 {
-		t.Fatalf("expected 5 written files, got %d", len(rendered.WrittenFiles))
+	if len(rendered.WrittenFiles) != 6 {
+		t.Fatalf("expected 6 written files, got %d", len(rendered.WrittenFiles))
 	}
 	for _, path := range rendered.WrittenFiles {
 		if _, err := os.Stat(path); err != nil {

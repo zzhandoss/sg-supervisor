@@ -11,6 +11,7 @@ type WorkspaceAssets struct {
 	SchoolGateSourcePath string
 	AdapterPath          string
 	NodePath             string
+	WinSWPath            string
 }
 
 func writeSupervisorConfig(path string, state State) error {

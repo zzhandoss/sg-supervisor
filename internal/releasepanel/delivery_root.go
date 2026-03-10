@@ -13,7 +13,7 @@ type deliveryRecipe struct {
 	NodeVersion       string `json:"nodeVersion"`
 }
 
-func prepareDeliveryRoot(root string, state State, assets WorkspaceAssets) (string, error) {
+func prepareDeliveryRoot(root string, state State, assets WorkspaceAssets, bundledFreeLicensePath string) (string, error) {
 	payloadDir := filepath.Join(root, "payload")
 	if err := os.MkdirAll(payloadDir, 0o755); err != nil {
 		return "", err
@@ -25,6 +25,9 @@ func prepareDeliveryRoot(root string, state State, assets WorkspaceAssets) (stri
 		return "", err
 	}
 	if err := writeDeliveryRecipe(root, state.Recipe); err != nil {
+		return "", err
+	}
+	if _, err := copyBundledFreeLicense(root, bundledFreeLicensePath); err != nil {
 		return "", err
 	}
 	return root, nil

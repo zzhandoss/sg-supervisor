@@ -19,6 +19,7 @@ func buildInitialStatus(service config.ServiceSpec) ServiceStatus {
 		RequiresLicense: service.RequiresLicense,
 		State:           "stopped",
 		Readiness:       "not_ready",
+		Reachability:    "unknown",
 		StaticDir:       service.StaticDir,
 		Components:      make([]ComponentStatus, 0, len(service.Commands)),
 	}

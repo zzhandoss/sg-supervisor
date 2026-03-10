@@ -4,7 +4,10 @@ const (
 	RepoSchoolGate = "zzhandoss/school-gate"
 	RepoAdapter    = "zzhandoss/dahua-terminal-adapter"
 	RepoNode       = "nodejs/node"
+	RepoWinSW      = "winsw/winsw"
 )
+
+const winSWVersion = "v2.12.0"
 
 const (
 	JobTypeLocalRelease = "local-release"

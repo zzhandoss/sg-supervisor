@@ -9,6 +9,7 @@ import (
 
 func Render(plan Plan) (RenderedArtifacts, error) {
 	files := map[string]string{
+		plan.WindowsConfigPath:    renderWindowsServiceConfig(plan),
 		plan.LinuxUnitPath:        renderLinuxUnit(plan),
 		plan.WindowsInstallPath:   renderWindowsInstallScript(plan),
 		plan.WindowsUninstallPath: renderWindowsUninstallScript(plan),
@@ -65,18 +66,11 @@ func renderWindowsInstallScript(plan Plan) string {
 	return strings.Join([]string{
 		"$ErrorActionPreference = 'Stop'",
 		"$serviceName = '" + plan.ServiceName + "'",
-		"$displayName = '" + plan.DisplayName + "'",
-		"$binaryPath = '" + escapePowerShell(plan.BinaryPath) + "'",
-		"$args = '" + escapePowerShell(joinWindowsArgs(plan.Arguments)) + "'",
-		`$binPath = '"' + $binaryPath + '" ' + $args`,
-		"$service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue",
-		"if ($null -eq $service) {",
-		"  sc.exe create $serviceName binPath= $binPath start= auto DisplayName= $displayName",
-		"} else {",
-		"  sc.exe config $serviceName binPath= $binPath start= auto",
-		"}",
+		"$wrapperPath = '" + escapePowerShell(plan.WindowsWrapperPath) + "'",
+		"if (-not (Test-Path $wrapperPath)) { throw 'WinSW wrapper is missing: ' + $wrapperPath }",
+		"& $wrapperPath install",
 		"sc.exe description $serviceName '" + escapePowerShell(plan.Description) + "'",
-		"if ((Get-Service -Name $serviceName).Status -ne 'Running') { sc.exe start $serviceName }",
+		"sc.exe config $serviceName start= demand",
 		"",
 	}, "\n")
 }
@@ -84,25 +78,35 @@ func renderWindowsInstallScript(plan Plan) string {
 func renderWindowsUninstallScript(plan Plan) string {
 	return strings.Join([]string{
 		"$ErrorActionPreference = 'Stop'",
-		"$serviceName = '" + plan.ServiceName + "'",
-		"$service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue",
-		"if ($null -ne $service) {",
-		"  if ($service.Status -ne 'Stopped') {",
-		"    sc.exe stop $serviceName",
-		"    Start-Sleep -Seconds 2",
-		"  }",
-		"  sc.exe delete $serviceName",
+		"$wrapperPath = '" + escapePowerShell(plan.WindowsWrapperPath) + "'",
+		"if (Test-Path $wrapperPath) {",
+		"  try { & $wrapperPath stop } catch {}",
+		"  & $wrapperPath uninstall",
 		"}",
 		"",
 	}, "\n")
 }
 
 func renderWindowsStartScript(plan Plan) string {
-	return "$ErrorActionPreference = 'Stop'\nsc.exe start " + plan.ServiceName + "\n"
+	return "$ErrorActionPreference = 'Stop'\n& '" + escapePowerShell(plan.WindowsWrapperPath) + "' start\n"
 }
 
 func renderWindowsStopScript(plan Plan) string {
-	return "$ErrorActionPreference = 'Stop'\nsc.exe stop " + plan.ServiceName + "\n"
+	return "$ErrorActionPreference = 'Stop'\n& '" + escapePowerShell(plan.WindowsWrapperPath) + "' stop\n"
+}
+
+func renderWindowsServiceConfig(plan Plan) string {
+	return strings.Join([]string{
+		"<service>",
+		"  <id>" + plan.ServiceName + "</id>",
+		"  <name>" + escapeXML(plan.DisplayName) + "</name>",
+		"  <description>" + escapeXML(plan.Description) + "</description>",
+		"  <executable>%BASE%\\" + escapeXML(filepath.Base(plan.BinaryPath)) + "</executable>",
+		"  <arguments>" + escapeXML(joinWindowsServiceArgs(plan.Arguments)) + "</arguments>",
+		"  <workingdirectory>%BASE%</workingdirectory>",
+		"</service>",
+		"",
+	}, "\n")
 }
 
 func quoteLinux(value string) string {
@@ -127,4 +131,20 @@ func joinWindowsArgs(args []string) string {
 
 func escapePowerShell(value string) string {
 	return strings.ReplaceAll(value, "'", "''")
+}
+
+func joinWindowsServiceArgs(args []string) string {
+	escaped := make([]string, 0, len(args))
+	for _, arg := range args {
+		escaped = append(escaped, `"`+strings.ReplaceAll(arg, `"`, `&quot;`)+`"`)
+	}
+	return strings.Join(escaped, " ")
+}
+
+func escapeXML(value string) string {
+	value = strings.ReplaceAll(value, "&", "&amp;")
+	value = strings.ReplaceAll(value, "<", "&lt;")
+	value = strings.ReplaceAll(value, ">", "&gt;")
+	value = strings.ReplaceAll(value, `"`, "&quot;")
+	return strings.ReplaceAll(value, "'", "&apos;")
 }

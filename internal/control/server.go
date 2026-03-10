@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -38,6 +39,7 @@ type StatusResponse struct {
 	ImportedPackages []PackageRecord         `json:"importedPackages"`
 	ActivePackage    ActivePackageRecord     `json:"activePackage"`
 	ProductConfig    ProductConfigStatus     `json:"productConfig"`
+	ServiceHost      ServiceHostStatus       `json:"serviceHost"`
 	Bootstrap        bootstrap.Status        `json:"bootstrap"`
 }
 
@@ -80,25 +82,34 @@ func (s StatusResponse) PrettyString() string {
 }
 
 type HandlerDependencies struct {
-	Status                     func(context.Context) (StatusResponse, error)
-	GenerateActivationRequest  func(context.Context, string, string) (string, error)
-	ImportLicense              func(context.Context, string) error
-	StartService               func(context.Context, string) error
-	StopService                func(string) error
-	RestartService             func(context.Context, string) error
-	ImportPackageManifest      func(context.Context, string) (PackageRecord, error)
-	ImportPackageBundle        func(context.Context, string) (PackageRecord, error)
-	ApplyLocalBundle           func(context.Context, string) (ActivePackageRecord, error)
-	ApplyPackage               func(context.Context, string) (ActivePackageRecord, error)
-	BootstrapStatus            func(context.Context) (bootstrap.Status, error)
-	StartBootstrap             func(context.Context) (bootstrap.Status, error)
-	UpdateSetupField           SetupFieldUpdater
-	UpdateProductConfig        ProductConfigUpdater
-	InstallPackage             Installer
-	Repair                     Repairer
-	Uninstall                  Uninstaller
-	RenderServiceHostArtifacts ServiceHostRenderer
-	ValidateManifest           func([]byte) error
+	Status                      func(context.Context) (StatusResponse, error)
+	GenerateActivationRequest   func(context.Context, string, string) (string, error)
+	ImportLicense               func(context.Context, string) error
+	StartService                func(context.Context, string) error
+	StopService                 func(string) error
+	RestartService              func(context.Context, string) error
+	ImportPackageManifest       func(context.Context, string) (PackageRecord, error)
+	ImportPackageBundle         func(context.Context, string) (PackageRecord, error)
+	ApplyLocalBundle            func(context.Context, string) (ActivePackageRecord, error)
+	ApplyPackage                func(context.Context, string) (ActivePackageRecord, error)
+	BootstrapStatus             func(context.Context) (bootstrap.Status, error)
+	StartBootstrap              func(context.Context) (bootstrap.Status, error)
+	ReadRecentLogs              func(context.Context, int) (RecentLogsResponse, error)
+	UpdateSetupField            SetupFieldUpdater
+	UpdateProductConfig         ProductConfigUpdater
+	InstallPackage              Installer
+	Repair                      Repairer
+	Uninstall                   Uninstaller
+	ServiceHostStatus           ServiceHostReader
+	InstallServiceHost          ServiceHostMutator
+	StartServiceHost            ServiceHostMutator
+	SwitchToServiceHost         ServiceHostMutator
+	StopServiceHost             ServiceHostMutator
+	EnableServiceHostAutostart  ServiceHostMutator
+	DisableServiceHostAutostart ServiceHostMutator
+	RemoveServiceHost           ServiceHostMutator
+	RenderServiceHostArtifacts  ServiceHostRenderer
+	ValidateManifest            func([]byte) error
 }
 
 type Server struct {
@@ -172,10 +183,13 @@ func (s *Server) handleLicenseImport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("path is required"))
 		return
 	}
+	log.Printf("license import requested: %s", request.Path)
 	if err := s.deps.ImportLicense(r.Context(), request.Path); err != nil {
+		log.Printf("license import failed: %v", err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("license import completed")
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": map[string]string{"status": "imported"}})
 }
 
@@ -202,10 +216,13 @@ func (s *Server) handleServiceStart(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service start requested: %s", request.Name)
 	if err := s.deps.StartService(r.Context(), request.Name); err != nil {
+		log.Printf("service start failed for %s: %v", request.Name, err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service started: %s", request.Name)
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": map[string]string{"status": "started"}})
 }
 
@@ -217,10 +234,13 @@ func (s *Server) handleServiceStop(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service stop requested: %s", request.Name)
 	if err := s.deps.StopService(request.Name); err != nil {
+		log.Printf("service stop failed for %s: %v", request.Name, err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service stopped: %s", request.Name)
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": map[string]string{"status": "stopped"}})
 }
 
@@ -232,10 +252,13 @@ func (s *Server) handleServiceRestart(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service restart requested: %s", request.Name)
 	if err := s.deps.RestartService(r.Context(), request.Name); err != nil {
+		log.Printf("service restart failed for %s: %v", request.Name, err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("service restarted: %s", request.Name)
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": map[string]string{"status": "restarted"}})
 }
 

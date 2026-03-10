@@ -98,8 +98,12 @@ func TestBuildLocalReleaseCreatesOwnerArtifacts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", "release-set.json")); err != nil {
 		t.Fatalf("expected release-set metadata: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(layout.ReleasesDir, "v1.0.0", report.Platforms[0], deliveryArtifactName("1.0.0", report.Platforms[0]))); err != nil {
+	archivePath := filepath.Join(layout.ReleasesDir, "v1.0.0", report.Platforms[0], deliveryArtifactName("1.0.0", report.Platforms[0]))
+	if _, err := os.Stat(archivePath); err != nil {
 		t.Fatalf("expected delivery archive: %v", err)
+	}
+	if !zipContainsFile(t, archivePath, "school-gate-supervisor-service.xml") {
+		t.Fatalf("expected delivery archive to include WinSW config")
 	}
 }
 
@@ -124,6 +128,7 @@ func newFakeAssetSource(t *testing.T) *fakeAssetSource {
 			"school-gate-v1.2.0-source.zip":      writeZipArchive(t, filepath.Join(root, "school-gate-source.zip"), coreFiles()),
 			"dahua-adapter-v0.2.0-win-x64.zip":   writeZipArchive(t, filepath.Join(root, "adapter-win.zip"), adapterFiles()),
 			"dahua-adapter-v0.2.0-linux-x64.zip": writeZipArchive(t, filepath.Join(root, "adapter-linux.zip"), adapterFiles()),
+			"WinSW-x64.exe":                      writePlainFile(t, filepath.Join(root, "winsw.exe"), "winsw"),
 		},
 	}
 }
@@ -186,6 +191,21 @@ func writeZipArchive(t *testing.T, path string, files map[string]string) string 
 	return path
 }
 
+func zipContainsFile(t *testing.T, path, name string) bool {
+	t.Helper()
+	reader, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer reader.Close()
+	for _, file := range reader.File {
+		if file.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func writeTarGzArchive(t *testing.T, path string, files map[string]string) string {
 	t.Helper()
 	file, err := os.Create(path)
@@ -205,6 +225,14 @@ func writeTarGzArchive(t *testing.T, path string, files map[string]string) strin
 		if _, err := tarWriter.Write([]byte(body)); err != nil {
 			t.Fatalf("write body: %v", err)
 		}
+	}
+	return path
+}
+
+func writePlainFile(t *testing.T, path, body string) string {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+		t.Fatalf("write file: %v", err)
 	}
 	return path
 }

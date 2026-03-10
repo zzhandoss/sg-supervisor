@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 )
 
@@ -45,6 +46,13 @@ func EnsureServiceCatalog(layout Layout) error {
 	} else if err != nil {
 		return err
 	}
+	catalog, changed, err := loadAndReconcileServiceCatalog(path, layout)
+	if err != nil {
+		return err
+	}
+	if changed {
+		return writeServiceCatalog(path, catalog)
+	}
 	return nil
 }
 
@@ -52,15 +60,8 @@ func LoadServiceCatalog(layout Layout) (ServiceCatalog, error) {
 	if err := EnsureServiceCatalog(layout); err != nil {
 		return ServiceCatalog{}, err
 	}
-	data, err := os.ReadFile(ServicesFile(layout))
-	if err != nil {
-		return ServiceCatalog{}, err
-	}
-	var catalog ServiceCatalog
-	if err := json.Unmarshal(data, &catalog); err != nil {
-		return ServiceCatalog{}, err
-	}
-	return catalog, nil
+	catalog, _, err := loadAndReconcileServiceCatalog(ServicesFile(layout), layout)
+	return catalog, err
 }
 
 func writeServiceCatalog(path string, catalog ServiceCatalog) error {
@@ -70,6 +71,65 @@ func writeServiceCatalog(path string, catalog ServiceCatalog) error {
 	}
 	data = append(data, '\n')
 	return os.WriteFile(path, data, 0o644)
+}
+
+func loadAndReconcileServiceCatalog(path string, layout Layout) (ServiceCatalog, bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ServiceCatalog{}, false, err
+	}
+	var catalog ServiceCatalog
+	if err := json.Unmarshal(data, &catalog); err != nil {
+		return ServiceCatalog{}, false, err
+	}
+	reconciled, changed := reconcileServiceCatalog(catalog, defaultServiceCatalog(layout))
+	return reconciled, changed, nil
+}
+
+func reconcileServiceCatalog(current, defaults ServiceCatalog) (ServiceCatalog, bool) {
+	defaultByName := make(map[string]ServiceSpec, len(defaults.Services))
+	for _, service := range defaults.Services {
+		defaultByName[service.Name] = service
+	}
+
+	changed := false
+	reconciled := ServiceCatalog{Services: make([]ServiceSpec, 0, len(defaults.Services))}
+	seen := make(map[string]struct{}, len(current.Services))
+	for _, service := range current.Services {
+		seen[service.Name] = struct{}{}
+		def, ok := defaultByName[service.Name]
+		if !ok {
+			reconciled.Services = append(reconciled.Services, service)
+			continue
+		}
+		next := service
+		if requiresServiceReset(service, def) {
+			next = def
+			changed = true
+		}
+		reconciled.Services = append(reconciled.Services, next)
+	}
+	for _, def := range defaults.Services {
+		if _, ok := seen[def.Name]; ok {
+			continue
+		}
+		reconciled.Services = append(reconciled.Services, def)
+		changed = true
+	}
+	return reconciled, changed
+}
+
+func requiresServiceReset(current, def ServiceSpec) bool {
+	if current.Name == "admin-ui" && current.Kind != def.Kind {
+		return true
+	}
+	if current.Name == "admin-ui" && len(current.Commands) == 0 && len(def.Commands) > 0 {
+		return true
+	}
+	if current.Name == "admin-ui" && !reflect.DeepEqual(current.Commands, def.Commands) {
+		return true
+	}
+	return false
 }
 
 func defaultServiceCatalog(layout Layout) ServiceCatalog {
@@ -128,10 +188,15 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 			},
 			{
 				Name:            "admin-ui",
-				Kind:            "static-assets",
+				Kind:            "process-group",
 				RequiresLicense: true,
 				Env:             commonServiceEnv(layout),
-				StaticDir:       filepath.Join(coreAppsDir, "admin-ui", "dist"),
+				HealthChecks: []HealthCheckSpec{
+					{Name: "admin-ui-health", URL: "http://127.0.0.1:5000/healthz", TimeoutMS: 3000},
+				},
+				Commands: []CommandSpec{
+					nodeCommand("admin-ui", nodePath, filepath.Join(coreAppsDir, "admin-ui"), filepath.Join(coreAppsDir, "admin-ui", ".output", "server", "index.mjs")),
+				},
 			},
 			{
 				Name:            "dahua-terminal-adapter",

@@ -15,6 +15,10 @@ import (
 )
 
 func main() {
+	cleanup, err := setupLogging(rootFromArgs(os.Args[1:]))
+	if err == nil && cleanup != nil {
+		defer cleanup()
+	}
 	if err := run(context.Background(), os.Args[1:]); err != nil {
 		log.Printf("error: %v", err)
 		os.Exit(1)
@@ -22,8 +26,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
+	args = normalizeArgs(args)
 	if len(args) == 0 {
-		return errors.New("expected command: init-layout | status | generate-activation-request | import-license | import-package-manifest | import-package-bundle | apply-package | set-setup-field | install-package | repair | uninstall | render-service-host | serve")
+		return errors.New("expected command: init-layout | status | generate-activation-request | import-license | import-package-manifest | import-package-bundle | apply-package | set-setup-field | install-package | repair | uninstall | render-service-host | serve | serve-admin-ui")
 	}
 
 	switch args[0] {
@@ -53,9 +58,21 @@ func run(ctx context.Context, args []string) error {
 		return runRenderServiceHost(ctx, args[1:])
 	case "serve":
 		return runServe(ctx, args[1:])
+	case "serve-admin-ui":
+		return runServeAdminUI(ctx, args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func normalizeArgs(args []string) []string {
+	if len(args) == 0 {
+		return []string{"serve"}
+	}
+	if len(args[0]) > 0 && args[0][0] == '-' {
+		return append([]string{"serve"}, args...)
+	}
+	return args
 }
 
 func runInitLayout(ctx context.Context, args []string) error {
@@ -133,10 +150,33 @@ func runServe(ctx context.Context, args []string) error {
 	if err := supervisor.EnsureBootstrap(ctx); err != nil {
 		return err
 	}
+	if existingURL, ok := existingSupervisorURL(*listen); ok {
+		fmt.Printf("Control Panel already running on %s\n", existingURL)
+		return nil
+	}
 
 	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	fmt.Printf("Control Panel started on http://%s\n", *listen)
 	return supervisor.Serve(serverCtx, *listen)
+}
+
+func runServeAdminUI(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("serve-admin-ui", flag.ContinueOnError)
+	root := fs.String("root", ".", "supervisor root")
+	listen := fs.String("listen", "0.0.0.0:5000", "listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	supervisor, err := app.New(*root)
+	if err != nil {
+		return err
+	}
+
+	serverCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return supervisor.ServeAdminUI(serverCtx, *listen)
 }
 
 func runImportPackageManifest(ctx context.Context, args []string) error {

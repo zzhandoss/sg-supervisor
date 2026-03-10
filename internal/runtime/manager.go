@@ -103,6 +103,8 @@ func (m *Manager) Start(ctx context.Context, name string, licenseValid bool) err
 		command := exec.Command(component.Executable, component.Args...)
 		command.Env = mergeEnv(spec.Env)
 		command.Dir = component.WorkingDir
+		command.Stdout = newProcessLogWriter(name, component.Name, "stdout")
+		command.Stderr = newProcessLogWriter(name, component.Name, "stderr")
 		if err := command.Start(); err != nil {
 			for _, startedEntry := range started {
 				if startedEntry.command.Process != nil {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"sg-supervisor/internal/config"
+	"sg-supervisor/internal/servicehost"
 )
 
 func prepareBootstrapWorkspace(root, platform string, state State, assets WorkspaceAssets) error {
@@ -21,6 +22,15 @@ func prepareBootstrapWorkspace(root, platform string, state State, assets Worksp
 	}
 	if err := writeSupervisorConfig(layout.ConfigFile, state); err != nil {
 		return err
+	}
+	if platform == "windows" {
+		targetPath := filepath.Join(layout.Root, "school-gate-supervisor-service.exe")
+		if err := copyArtifact(assets.WinSWPath, targetPath); err != nil {
+			return err
+		}
+		if err := renderWindowsServiceArtifacts(layout); err != nil {
+			return err
+		}
 	}
 	return validateBootstrapWorkspace(layout, platform)
 }
@@ -43,6 +53,8 @@ func validateBootstrapWorkspace(layout config.Layout, platform string) error {
 	}
 	if platform == "windows" {
 		required = append(required, filepath.Join(layout.InstallDir, "runtime", "node", "node.exe"))
+		required = append(required, filepath.Join(layout.Root, "school-gate-supervisor-service.exe"))
+		required = append(required, filepath.Join(layout.Root, "school-gate-supervisor-service.xml"))
 	} else {
 		required = append(required, filepath.Join(layout.InstallDir, "runtime", "node", "bin", "node"))
 	}
@@ -52,4 +64,14 @@ func validateBootstrapWorkspace(layout config.Layout, platform string) error {
 		}
 	}
 	return nil
+}
+
+func renderWindowsServiceArtifacts(layout config.Layout) error {
+	cfg, err := config.LoadOrCreate(layout.ConfigFile)
+	if err != nil {
+		return err
+	}
+	plan := servicehost.BuildPlan(layout, cfg, filepath.Join(layout.Root, "sg-supervisor.exe"))
+	_, err = servicehost.Render(plan)
+	return err
 }

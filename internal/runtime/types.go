@@ -17,8 +17,11 @@ type ServiceStatus struct {
 	RequiresLicense bool              `json:"requiresLicense"`
 	State           string            `json:"state"`
 	Readiness       string            `json:"readiness"`
+	Reachability    string            `json:"reachability"`
+	PrimaryURL      string            `json:"primaryUrl,omitempty"`
 	StaticDir       string            `json:"staticDir,omitempty"`
 	LastError       string            `json:"lastError,omitempty"`
 	HealthChecks    []HealthStatus    `json:"healthChecks,omitempty"`
+	AccessChecks    []HealthStatus    `json:"accessChecks,omitempty"`
 	Components      []ComponentStatus `json:"components,omitempty"`
 }

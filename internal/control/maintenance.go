@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"sg-supervisor/internal/maintenance"
@@ -51,8 +52,10 @@ func (s *Server) handleInstallPackage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("install package requested: packageId=%s binaryPath=%s", request.PackageID, request.BinaryPath)
 	report, err := s.deps.InstallPackage(r.Context(), request.PackageID, request.BinaryPath)
 	if err != nil {
+		log.Printf("install package failed: %v", err)
 		if len(report.Issues) > 0 || report.ActivePackageID != "" || len(report.WrittenFiles) > 0 || report.Completed {
 			writeErrorWithData(w, http.StatusConflict, err, report)
 			return
@@ -71,8 +74,10 @@ func (s *Server) handleRepair(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("repair requested: binaryPath=%s", request.BinaryPath)
 	report, err := s.deps.Repair(r.Context(), request.BinaryPath)
 	if err != nil {
+		log.Printf("repair failed: %v", err)
 		if len(report.Issues) > 0 || len(report.EnsuredPaths) > 0 || len(report.ServiceArtifacts) > 0 || report.Completed {
 			writeErrorWithData(w, http.StatusConflict, err, report)
 			return
@@ -91,8 +96,10 @@ func (s *Server) handleUninstall(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("uninstall requested: mode=%s", request.Mode)
 	report, err := s.deps.Uninstall(r.Context(), request.Mode)
 	if err != nil {
+		log.Printf("uninstall failed: %v", err)
 		if len(report.Issues) > 0 || len(report.RemovedPaths) > 0 || report.Completed {
 			writeErrorWithData(w, http.StatusConflict, err, report)
 			return

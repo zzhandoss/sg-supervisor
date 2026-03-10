@@ -2,6 +2,7 @@ const state = {
   status: null,
   recipeDirty: false,
 };
+let activeButton = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -15,8 +16,32 @@ async function api(path, options = {}) {
   return payload.data;
 }
 
+function setBusy(button, busy, label = "Working...") {
+  if (!button) {
+    return;
+  }
+  if (busy) {
+    if (!button.dataset.originalLabel) {
+      button.dataset.originalLabel = button.textContent;
+    }
+    button.disabled = true;
+    button.textContent = label;
+    return;
+  }
+  button.disabled = false;
+  if (button.dataset.originalLabel) {
+    button.textContent = button.dataset.originalLabel;
+  }
+}
+
 function setText(id, value) {
   document.getElementById(id).textContent = value || "";
+}
+
+function setResult(id, value, kind = "") {
+  const node = document.getElementById(id);
+  node.textContent = value || "";
+  node.className = kind ? `result ${kind}` : "result";
 }
 
 function setRecipeStatus(message, kind = "") {
@@ -62,6 +87,7 @@ function renderStatus(status) {
   }
   renderJobs(status.jobs || []);
   renderLicenses(status.issuedLicenses || []);
+  updateLicenseModeUI();
 }
 
 function renderJobs(jobs) {
@@ -107,54 +133,145 @@ async function refresh() {
 
 async function saveRecipe(event) {
   event.preventDefault();
-  await api("/api/v1/recipe", {
-    method: "POST",
-    body: JSON.stringify(recipeValues()),
-  });
-  state.recipeDirty = false;
-  setText("recipe-result", "Recipe saved.");
-  setRecipeStatus("Recipe is saved and ready for local release.", "saved");
-  await refresh();
+  activeButton = event.submitter;
+  setBusy(activeButton, true, "Saving...");
+  try {
+    await api("/api/v1/recipe", {
+      method: "POST",
+      body: JSON.stringify(recipeValues()),
+    });
+    state.recipeDirty = false;
+    setResult("recipe-result", "Recipe saved.", "success");
+    setRecipeStatus("Recipe is saved and ready for local release.", "saved");
+    await refresh();
+  } catch (error) {
+    setResult("recipe-result", error.message, "error");
+  } finally {
+    setBusy(activeButton, false);
+    activeButton = null;
+  }
 }
 
 async function fetchVersions(event) {
   const repo = event.target.dataset.repo;
-  const versions = await api(`/api/v1/upstream/versions?repo=${encodeURIComponent(repo)}`);
-  const target = document.getElementById(`${repo}-options`);
-  target.innerHTML = versions.map((entry) => `<option value="${entry.tag.replace(/^v/, "")}"></option>`).join("");
+  activeButton = event.target;
+  setBusy(activeButton, true, "Loading...");
+  try {
+    const versions = await api(`/api/v1/upstream/versions?repo=${encodeURIComponent(repo)}`);
+    const target = document.getElementById(`${repo}-options`);
+    target.innerHTML = versions.map((entry) => `<option value="${entry.tag.replace(/^v/, "")}"></option>`).join("");
+  } catch (error) {
+    setResult("recipe-result", error.message, "error");
+  } finally {
+    setBusy(activeButton, false);
+    activeButton = null;
+  }
 }
 
-async function startBuild() {
+async function startBuild(event) {
   if (state.recipeDirty) {
-    setText("build-result", "Save the recipe before starting a local release.");
+    setResult("build-result", "Save the recipe before starting a local release.", "error");
     return;
   }
-  const job = await api("/api/v1/releases/local", { method: "POST", body: "{}" });
-  setText("build-result", `Started ${state.status?.hostPlatform || "local"} release job ${job.id}.`);
-  await refresh();
+  activeButton = event.target;
+  setBusy(activeButton, true, "Starting...");
+  try {
+    const job = await api("/api/v1/releases/local", { method: "POST", body: "{}" });
+    setResult("build-result", `Started ${state.status?.hostPlatform || "local"} release job ${job.id}.`, "success");
+    await refresh();
+  } catch (error) {
+    setResult("build-result", error.message, "error");
+  } finally {
+    setBusy(activeButton, false);
+    activeButton = null;
+  }
+}
+
+async function loadActivationRequestFile() {
+  const file = document.getElementById("activation-request-file").files[0];
+  if (!file) {
+    setResult("license-result", "Choose an activation-request.json file first.", "error");
+    return;
+  }
+  activeButton = document.getElementById("load-activation-request");
+  setBusy(activeButton, true, "Loading...");
+  try {
+    const text = await file.text();
+    const request = JSON.parse(text);
+    document.getElementById("license-customer").value = request.customerHint || "";
+    document.getElementById("license-fingerprint").value = request.fingerprint || "";
+    document.getElementById("license-mode").value = request.fingerprint ? "bound" : "free";
+    updateLicenseModeUI();
+    setResult("license-result", "Activation request loaded. Customer and fingerprint fields were filled automatically.", "success");
+  } catch (error) {
+    setResult("license-result", error.message, "error");
+  } finally {
+    setBusy(activeButton, false);
+    activeButton = null;
+  }
 }
 
 async function issueLicense(event) {
   event.preventDefault();
-  const features = document.getElementById("license-features").value
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const record = await api("/api/v1/licenses/issue", {
-    method: "POST",
-    body: JSON.stringify({
-      activationRequestPath: document.getElementById("activation-request-path").value,
-      customer: document.getElementById("license-customer").value,
-      mode: document.getElementById("license-mode").value,
-      edition: document.getElementById("license-edition").value,
-      features,
-      expiresAt: document.getElementById("license-expires-at").value,
-      fingerprint: document.getElementById("license-fingerprint").value,
-      perpetual: document.getElementById("license-perpetual").checked,
-    }),
+  activeButton = event.submitter;
+  setBusy(activeButton, true, "Issuing...");
+  try {
+    const mode = document.getElementById("license-mode").value;
+    const perpetual = document.getElementById("license-perpetual").checked;
+    const features = document.getElementById("license-features").value
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (mode === "bound" && !document.getElementById("license-fingerprint").value.trim()) {
+      throw new Error("Bound license requires a fingerprint or activation-request.json.");
+    }
+    if (!perpetual && !document.getElementById("license-expires-at").value.trim()) {
+      throw new Error("Set Expires At or enable Perpetual before issuing the license.");
+    }
+    const record = await api("/api/v1/licenses/issue", {
+      method: "POST",
+      body: JSON.stringify({
+        activationRequestPath: document.getElementById("activation-request-path").value,
+        customer: document.getElementById("license-customer").value,
+        mode,
+        edition: document.getElementById("license-edition").value,
+        features,
+        expiresAt: document.getElementById("license-expires-at").value,
+        fingerprint: document.getElementById("license-fingerprint").value,
+        perpetual,
+      }),
+    });
+    setResult("license-result", `Issued ${record.licenseId}. Saved to ${record.path}.`, "success");
+    await refresh();
+  } catch (error) {
+    setResult("license-result", error.message, "error");
+  } finally {
+    setBusy(activeButton, false);
+    activeButton = null;
+  }
+}
+
+function updateLicenseModeUI() {
+  const mode = document.getElementById("license-mode").value;
+  const perpetualInput = document.getElementById("license-perpetual");
+  if (mode === "free" && !document.getElementById("license-expires-at").value.trim()) {
+    perpetualInput.checked = true;
+  }
+  const perpetual = perpetualInput.checked;
+  const help = document.getElementById("license-mode-help");
+  const bound = mode === "bound";
+
+  document.querySelectorAll('[data-license-field="activationRequestPath"], [data-license-field="activationRequestFile"], [data-license-field="fingerprint"]').forEach((node) => {
+    node.classList.toggle("is-hidden", !bound);
   });
-  setText("license-result", `Issued ${record.licenseId}.`);
-  await refresh();
+
+  document.querySelector('[data-license-field="expiresAt"]').classList.toggle("is-hidden", perpetual);
+
+  if (bound) {
+    help.textContent = "Bound license mode: load activation-request.json from the customer, or paste the fingerprint manually.";
+    return;
+  }
+  help.textContent = "Free license mode: no fingerprint is required. Choose perpetual or set an expiration date.";
 }
 
 function markRecipeDirty() {
@@ -174,6 +291,9 @@ document.getElementById("refresh-button").addEventListener("click", refresh);
 document.getElementById("recipe-form").addEventListener("submit", saveRecipe);
 document.getElementById("build-button").addEventListener("click", startBuild);
 document.getElementById("license-form").addEventListener("submit", issueLicense);
+document.getElementById("load-activation-request").addEventListener("click", loadActivationRequestFile);
+document.getElementById("license-mode").addEventListener("change", updateLicenseModeUI);
+document.getElementById("license-perpetual").addEventListener("change", updateLicenseModeUI);
 document.querySelectorAll(".fetch-versions").forEach((button) => button.addEventListener("click", fetchVersions));
 ["installer-version", "school-gate-version", "adapter-version", "node-version"].forEach((id) => {
   document.getElementById(id).addEventListener("input", markRecipeDirty);

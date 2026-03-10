@@ -23,10 +23,22 @@ func (s *Service) downloadAssets(ctx context.Context, state State, platform stri
 	if err != nil {
 		return WorkspaceAssets{}, err
 	}
+	winSWPath := ""
+	if platform == "windows" {
+		winSWPath, err = s.assets.DownloadReleaseAsset(ctx, AssetSpec{
+			Repo:    RepoWinSW,
+			Tag:     winSWVersion,
+			Pattern: "WinSW-x64.exe",
+		}, filepath.Join(cacheDir, "winsw", trimVersion(winSWVersion), platform))
+		if err != nil {
+			return WorkspaceAssets{}, err
+		}
+	}
 	return WorkspaceAssets{
 		SchoolGateSourcePath: sourcePath,
 		AdapterPath:          adapterPath,
 		NodePath:             nodePath,
+		WinSWPath:            winSWPath,
 	}, nil
 }
 

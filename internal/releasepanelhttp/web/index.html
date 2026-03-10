@@ -49,21 +49,25 @@
 
     <section class="card">
       <h2>License Issuance</h2>
+      <p class="muted">For a bound license, the best input is the customer's <code>activation-request.json</code>. Free licenses can be created in advance and will be bundled into new delivery archives automatically.</p>
       <form id="license-form" class="grid-form">
-        <label>Activation Request Path<input id="activation-request-path" name="activationRequestPath"></label>
-        <label>Customer<input id="license-customer" name="customer"></label>
-        <label>Mode
+        <label class="license-field" data-license-field="mode">Mode
           <select id="license-mode" name="mode">
             <option value="free">free</option>
             <option value="bound">bound</option>
           </select>
         </label>
-        <label>Edition<input id="license-edition" name="edition" value="standard"></label>
-        <label>Features (comma separated)<input id="license-features" name="features"></label>
-        <label>Expires At (RFC3339)<input id="license-expires-at" name="expiresAt" placeholder="2035-01-01T00:00:00Z"></label>
-        <label>Fingerprint<input id="license-fingerprint" name="fingerprint"></label>
-        <label class="checkbox"><input id="license-perpetual" name="perpetual" type="checkbox">Perpetual</label>
+        <div id="license-mode-help" class="status-note">Free license mode: no fingerprint is required. Choose perpetual or set an expiration date.</div>
+        <label class="license-field" data-license-field="activationRequestPath">Activation Request Path<input id="activation-request-path" name="activationRequestPath" placeholder="Optional local path on this machine"></label>
+        <label class="license-field" data-license-field="activationRequestFile">Activation Request JSON<input id="activation-request-file" type="file" accept=".json,application/json"></label>
+        <label class="license-field" data-license-field="customer">Customer<input id="license-customer" name="customer" placeholder="School or customer name"></label>
+        <label class="license-field" data-license-field="edition">Edition<input id="license-edition" name="edition" value="standard"></label>
+        <label class="license-field" data-license-field="features">Features (comma separated)<input id="license-features" name="features" placeholder="optional, comma separated"></label>
+        <label class="license-field" data-license-field="expiresAt">Expires At (RFC3339)<input id="license-expires-at" name="expiresAt" placeholder="2035-01-01T00:00:00Z"></label>
+        <label class="license-field" data-license-field="fingerprint">Fingerprint<input id="license-fingerprint" name="fingerprint" placeholder="Filled from activation-request.json"></label>
+        <label class="checkbox license-field" data-license-field="perpetual"><input id="license-perpetual" name="perpetual" type="checkbox" checked>Perpetual</label>
         <div class="actions">
+          <button id="load-activation-request" type="button" class="secondary">Load request JSON</button>
           <button type="submit">Issue License</button>
         </div>
       </form>

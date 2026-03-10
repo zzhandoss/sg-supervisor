@@ -3,8 +3,10 @@ package app
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"sg-supervisor/internal/bootstrap"
@@ -156,7 +158,13 @@ func (a *App) buildBootstrapSource(ctx context.Context, status *bootstrap.Status
 		status.Logs = append(status.Logs, step.Message)
 		_ = a.bootstrap.Save(*status)
 		args := append([]string{"pnpm"}, step.Args[1:]...)
-		if _, err := runBootstrapCommand(ctx, sourceRoot, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), args...); err != nil {
+		output, err := runBootstrapCommand(ctx, sourceRoot, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), args...)
+		if strings.TrimSpace(output) != "" {
+			status.Logs = append(status.Logs, output)
+			_ = a.bootstrap.Save(*status)
+			log.Printf("bootstrap command output [%s]: %s", step.Name, strings.TrimSpace(output))
+		}
+		if err != nil {
 			a.failBootstrap(*status, "build-school-gate", err)
 			return err
 		}
@@ -181,7 +189,12 @@ func (a *App) deployBootstrapSource(ctx context.Context, status *bootstrap.Statu
 	}
 	adminSourceDir := filepath.Join(sourceRoot, "apps", "admin-ui")
 	adminTargetDir := filepath.Join(a.layout.InstallDir, "core", "apps", "admin-ui")
-	if err := copyDir(filepath.Join(adminSourceDir, ".output", "public"), filepath.Join(adminTargetDir, "dist")); err != nil {
+	adminBuildDir, err := resolveAdminUIBuildDir(adminSourceDir)
+	if err != nil {
+		a.failBootstrap(*status, "deploy-school-gate", err)
+		return err
+	}
+	if err := copyDir(adminBuildDir, filepath.Join(adminTargetDir, ".output")); err != nil {
 		a.failBootstrap(*status, "deploy-school-gate", err)
 		return err
 	}

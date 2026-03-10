@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"log"
 	"net/http"
 )
 
@@ -29,11 +30,14 @@ func (s *Server) handleSetupFieldUpdate(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("setup field update requested: key=%s status=%s", request.Key, request.Status)
 	report, err := s.deps.UpdateSetupField(r.Context(), request.Key, request.Status, request.Value)
 	if err != nil {
+		log.Printf("setup field update failed for %s: %v", request.Key, err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("setup field updated: key=%s status=%s", request.Key, request.Status)
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": report})
 }
 

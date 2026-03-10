@@ -12,6 +12,8 @@ type Plan struct {
 	Description          string   `json:"description"`
 	BinaryPath           string   `json:"binaryPath"`
 	Arguments            []string `json:"arguments"`
+	WindowsWrapperPath   string   `json:"windowsWrapperPath"`
+	WindowsConfigPath    string   `json:"windowsConfigPath"`
 	LinuxUnitPath        string   `json:"linuxUnitPath"`
 	WindowsInstallPath   string   `json:"windowsInstallPath"`
 	WindowsUninstallPath string   `json:"windowsUninstallPath"`
@@ -30,12 +32,15 @@ type RenderedArtifacts struct {
 
 func BuildPlan(layout config.Layout, cfg config.SupervisorConfig, binaryPath string) Plan {
 	baseDir := filepath.Join(layout.RuntimeDir, "service-host")
+	wrapperBase := filepath.Join(layout.Root, "school-gate-supervisor-service")
 	return Plan{
 		ServiceName:          "school-gate-supervisor",
 		DisplayName:          "School Gate Supervisor",
 		Description:          "School Gate installer, runtime supervisor, and control center host",
 		BinaryPath:           binaryPath,
-		Arguments:            []string{"serve", "--root", layout.Root, "--listen", cfg.ListenAddress},
+		Arguments:            []string{"serve", "--root", ".", "--listen", cfg.ListenAddress},
+		WindowsWrapperPath:   wrapperBase + ".exe",
+		WindowsConfigPath:    wrapperBase + ".xml",
 		LinuxUnitPath:        filepath.Join(baseDir, "linux", "school-gate-supervisor.service"),
 		WindowsInstallPath:   filepath.Join(baseDir, "windows", "install-service.ps1"),
 		WindowsUninstallPath: filepath.Join(baseDir, "windows", "uninstall-service.ps1"),

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ func (a *App) markBootstrapStep(status *bootstrap.Status, name, state, message s
 		break
 	}
 	status.Logs = append(status.Logs, strings.TrimSpace(message))
+	log.Printf("bootstrap step %s -> %s: %s", name, state, strings.TrimSpace(message))
 	return a.bootstrap.Save(*status)
 }
 
@@ -38,6 +40,7 @@ func (a *App) completeBootstrapStep(status *bootstrap.Status, name, message stri
 	}
 	status.CurrentStep = ""
 	status.Logs = append(status.Logs, strings.TrimSpace(message))
+	log.Printf("bootstrap step %s -> succeeded: %s", name, strings.TrimSpace(message))
 	return a.bootstrap.Save(*status)
 }
 
@@ -57,5 +60,6 @@ func (a *App) failBootstrap(status bootstrap.Status, name string, err error) {
 		status.Steps[index] = step
 		break
 	}
+	log.Printf("bootstrap step %s -> failed: %v", name, err)
 	_ = a.bootstrap.Save(status)
 }

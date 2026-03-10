@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"log"
 	"net/http"
 )
 
@@ -28,11 +29,14 @@ func (s *Server) handleProductConfigUpdate(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("product config update requested")
 	status, err := s.deps.UpdateProductConfig(r.Context(), request)
 	if err != nil {
+		log.Printf("product config update failed: %v", err)
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
+	log.Printf("product config updated: preferredHost=%s telegramConfigured=%t", status.PreferredHost, status.TelegramBotConfigured)
 	writeJSON(w, http.StatusCreated, map[string]any{"success": true, "data": status})
 }
 

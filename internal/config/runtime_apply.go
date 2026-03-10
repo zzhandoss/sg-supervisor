@@ -50,6 +50,10 @@ func injectInternalRuntimeEnv(serviceName string, env map[string]string, layout 
 	}
 	if serviceName == "admin-ui" {
 		env["VITE_API_BASE_URL"] = status.ViteAPIBaseURL
+		env["HOST"] = "0.0.0.0"
+		env["PORT"] = "5000"
+		env["NITRO_HOST"] = "0.0.0.0"
+		env["NITRO_PORT"] = "5000"
 	}
 	if serviceName == "dahua-terminal-adapter" {
 		env["BASE_URL"] = "http://127.0.0.1:8091"

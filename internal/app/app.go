@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"sg-supervisor/internal/bootstrap"
 	"sg-supervisor/internal/config"
@@ -20,6 +21,7 @@ type App struct {
 	root        string
 	layout      config.Layout
 	cfg         config.SupervisorConfig
+	listenAddr  string
 	license     *license.Store
 	product     *config.ProductStore
 	internal    *config.InternalRuntimeStore
@@ -29,6 +31,8 @@ type App struct {
 	runner      servicehost.Runner
 	bootstrap   *bootstrap.Store
 	bootstrapMu sync.Mutex
+	serveMu     sync.Mutex
+	serveStop   func()
 }
 
 func New(root string) (*App, error) {
@@ -64,17 +68,18 @@ func New(root string) (*App, error) {
 	}
 	catalog = config.ApplyRuntimeConfig(layout, catalog, productCfg, internalCfg)
 	return &App{
-		root:      root,
-		layout:    layout,
-		cfg:       cfg,
-		license:   license.NewStore(layout, cfg),
-		product:   product,
-		internal:  internal,
-		runtime:   runtime.NewManager(catalog),
-		setup:     setup.NewStore(layout),
-		updates:   updates.NewStore(layout, cfg),
-		runner:    servicehost.ExecRunner{},
-		bootstrap: bootstrap.NewStore(layout),
+		root:       root,
+		layout:     layout,
+		cfg:        cfg,
+		listenAddr: cfg.ListenAddress,
+		license:    license.NewStore(layout, cfg),
+		product:    product,
+		internal:   internal,
+		runtime:    runtime.NewManager(catalog),
+		setup:      setup.NewStore(layout),
+		updates:    updates.NewStore(layout, cfg),
+		runner:     servicehost.ExecRunner{},
+		bootstrap:  bootstrap.NewStore(layout),
 	}, nil
 }
 
@@ -131,12 +136,16 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 	if err != nil {
 		return control.StatusResponse{}, err
 	}
-	serviceStatuses := a.runtime.StatusesWithHealth(ctx)
 	productConfig, err := a.ProductConfigStatus(ctx)
 	if err != nil {
 		return control.StatusResponse{}, err
 	}
+	serviceStatuses := runtime.ApplyReachability(ctx, a.runtime.StatusesWithHealth(ctx), productConfig.ResolvedHost)
 	bootstrapStatus, err := a.BootstrapStatus(ctx)
+	if err != nil {
+		return control.StatusResponse{}, err
+	}
+	serviceHostStatus, err := a.ServiceHostStatus(ctx)
 	if err != nil {
 		return control.StatusResponse{}, err
 	}
@@ -144,7 +153,7 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 	return control.StatusResponse{
 		ProductName:   a.cfg.ProductName,
 		Root:          a.root,
-		ListenAddr:    a.cfg.ListenAddress,
+		ListenAddr:    a.currentListenAddress(),
 		SetupRequired: !setupStatus.Complete,
 		Setup:         setupStatus,
 		Directories: control.DirectoryStatus{
@@ -164,6 +173,7 @@ func (a *App) Status(ctx context.Context) (control.StatusResponse, error) {
 		ImportedPackages: mapPackageRecords(importedPackages),
 		ActivePackage:    mapActivePackage(activePackage),
 		ProductConfig:    productConfig,
+		ServiceHost:      serviceHostStatus,
 		Bootstrap:        bootstrapStatus,
 	}, nil
 }
@@ -223,9 +233,12 @@ func (a *App) Serve(ctx context.Context, listen string) error {
 		return err
 	}
 	if listen != "" {
-		a.cfg.ListenAddress = listen
+		a.listenAddr = listen
 	}
-	server := control.NewServer(a.cfg.ListenAddress, control.HandlerDependencies{
+	serveCtx, stop := context.WithCancel(ctx)
+	a.setServeStop(stop)
+	defer a.clearServeStop()
+	server := control.NewServer(a.currentListenAddress(), control.HandlerDependencies{
 		Status: func(ctx context.Context) (control.StatusResponse, error) {
 			return a.Status(ctx)
 		},
@@ -272,19 +285,73 @@ func (a *App) Serve(ctx context.Context, listen string) error {
 			}
 			return mapActivePackage(record), nil
 		},
-		BootstrapStatus:            a.BootstrapStatus,
-		StartBootstrap:             a.StartBootstrap,
-		UpdateSetupField:           a.UpdateSetupField,
-		UpdateProductConfig:        a.UpdateProductConfig,
-		InstallPackage:             a.InstallPackage,
-		Repair:                     a.Repair,
-		Uninstall:                  a.Uninstall,
-		RenderServiceHostArtifacts: a.RenderServiceHostArtifacts,
+		BootstrapStatus: a.BootstrapStatus,
+		StartBootstrap:  a.StartBootstrap,
+		ReadRecentLogs: func(ctx context.Context, limit int) (control.RecentLogsResponse, error) {
+			logs, err := a.ReadRecentLogs(ctx, limit)
+			if err != nil {
+				return control.RecentLogsResponse{}, err
+			}
+			return control.RecentLogsResponse{Path: logs.Path, Lines: logs.Lines}, nil
+		},
+		UpdateSetupField:            a.UpdateSetupField,
+		UpdateProductConfig:         a.UpdateProductConfig,
+		InstallPackage:              a.InstallPackage,
+		Repair:                      a.Repair,
+		Uninstall:                   a.Uninstall,
+		ServiceHostStatus:           a.ServiceHostStatus,
+		InstallServiceHost:          a.InstallServiceHost,
+		StartServiceHost:            a.StartServiceHost,
+		SwitchToServiceHost:         a.SwitchToServiceHost,
+		StopServiceHost:             a.StopServiceHost,
+		EnableServiceHostAutostart:  a.EnableServiceHostAutostart,
+		DisableServiceHostAutostart: a.DisableServiceHostAutostart,
+		RemoveServiceHost:           a.RemoveServiceHost,
+		RenderServiceHostArtifacts:  a.RenderServiceHostArtifacts,
 		ValidateManifest: func(data []byte) error {
 			return manifest.ValidateJSON(data)
 		},
 	})
-	return server.Run(ctx)
+	return server.Run(serveCtx)
+}
+
+func (a *App) currentListenAddress() string {
+	if a.listenAddr != "" {
+		return a.listenAddr
+	}
+	return a.cfg.ListenAddress
+}
+
+func (a *App) setServeStop(stop func()) {
+	a.serveMu.Lock()
+	defer a.serveMu.Unlock()
+	a.serveStop = stop
+}
+
+func (a *App) clearServeStop() {
+	a.serveMu.Lock()
+	defer a.serveMu.Unlock()
+	a.serveStop = nil
+}
+
+func (a *App) stopCurrentServe() bool {
+	a.serveMu.Lock()
+	stop := a.serveStop
+	a.serveMu.Unlock()
+	if stop == nil {
+		return false
+	}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		stop()
+	}()
+	return true
+}
+
+func (a *App) isServing() bool {
+	a.serveMu.Lock()
+	defer a.serveMu.Unlock()
+	return a.serveStop != nil
 }
 
 func managedServiceNames(statuses []runtime.ServiceStatus) []string {

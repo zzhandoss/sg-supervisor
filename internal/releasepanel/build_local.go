@@ -109,7 +109,15 @@ func (s *Service) buildPlatformRelease(ctx context.Context, job *Job, state Stat
 	_ = s.jobs.Save(*job)
 	job.Logs = append(job.Logs, "assembling delivery archive")
 	_ = s.jobs.Save(*job)
-	deliveryRoot, err := prepareDeliveryRoot(bootstrapRoot, state, assets)
+	freeLicensePath, err := s.latestIssuedFreeLicensePath()
+	if err != nil {
+		return LocalReleaseReport{}, errors.New("license lookup failed: " + err.Error())
+	}
+	if freeLicensePath != "" {
+		job.Logs = append(job.Logs, "bundling latest free license into delivery archive")
+		_ = s.jobs.Save(*job)
+	}
+	deliveryRoot, err := prepareDeliveryRoot(bootstrapRoot, state, assets, freeLicensePath)
 	if err != nil {
 		return LocalReleaseReport{}, errors.New("delivery root preparation failed for " + platform + ": " + err.Error())
 	}
