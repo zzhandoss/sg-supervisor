@@ -29,6 +29,16 @@ func injectInternalRuntimeEnv(serviceName string, env map[string]string, layout 
 	deviceServiceURL := "http://127.0.0.1:4010"
 	botURL := "http://127.0.0.1:4100"
 
+	env["LOG_LEVEL"] = "info"
+	env["LOG_DIR"] = filepath.Join(layout.LogsDir, "school-gate")
+	env["LOG_MAX_BYTES"] = "104857600"
+	env["LOG_RETENTION_DAYS"] = "7"
+	env["BACKUP_DIR"] = filepath.Join(layout.BackupsDir, "school-gate")
+	env["BACKUP_LICENSE_DIR"] = layout.LicensesDir
+	env["BACKUP_INCLUDE_LOGS"] = "false"
+	env["BACKUP_LOGS_MAX_FILES"] = "4"
+	env["BACKUP_KEEP_NIGHTLY"] = "14"
+	env["BACKUP_KEEP_PREUPDATE"] = "3"
 	env["DB_FILE"] = coreDB
 	env["DEVICE_DB_FILE"] = deviceDB
 	env["CORE_TOKEN"] = internal.CoreToken

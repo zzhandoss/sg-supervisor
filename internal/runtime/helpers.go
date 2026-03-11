@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"syscall"
 
 	"sg-supervisor/internal/config"
@@ -66,16 +67,43 @@ func serviceLastError(components []ComponentStatus) string {
 }
 
 func mergeEnv(extra map[string]string) []string {
-	env := append([]string(nil), os.Environ()...)
-	keys := make([]string, 0, len(extra))
-	for key := range extra {
+	merged := make(map[string]string)
+	original := make(map[string]string)
+	for _, entry := range os.Environ() {
+		parts := strings.SplitN(entry, "=", 2)
+		key := parts[0]
+		value := ""
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		normalized := normalizeEnvKey(key)
+		if _, exists := original[normalized]; !exists {
+			original[normalized] = key
+		}
+		merged[normalized] = value
+	}
+	for key, value := range extra {
+		normalized := normalizeEnvKey(key)
+		original[normalized] = key
+		merged[normalized] = value
+	}
+	keys := make([]string, 0, len(merged))
+	for key := range merged {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	env := make([]string, 0, len(keys))
 	for _, key := range keys {
-		env = append(env, key+"="+extra[key])
+		env = append(env, original[key]+"="+merged[key])
 	}
 	return env
+}
+
+func normalizeEnvKey(key string) string {
+	if os.PathListSeparator == ';' {
+		return strings.ToUpper(key)
+	}
+	return key
 }
 
 func exitError(err error) string {

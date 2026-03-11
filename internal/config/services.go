@@ -123,10 +123,10 @@ func requiresServiceReset(current, def ServiceSpec) bool {
 	if current.Name == "admin-ui" && current.Kind != def.Kind {
 		return true
 	}
-	if current.Name == "admin-ui" && len(current.Commands) == 0 && len(def.Commands) > 0 {
+	if isSupervisorManagedService(current.Name) && len(current.Commands) == 0 && len(def.Commands) > 0 {
 		return true
 	}
-	if current.Name == "admin-ui" && !reflect.DeepEqual(current.Commands, def.Commands) {
+	if isSupervisorManagedService(current.Name) && !reflect.DeepEqual(current.Commands, def.Commands) {
 		return true
 	}
 	return false
@@ -134,6 +134,7 @@ func requiresServiceReset(current, def ServiceSpec) bool {
 
 func defaultServiceCatalog(layout Layout) ServiceCatalog {
 	nodePath := bundledNodePath(layout)
+	coreRootDir := filepath.Join(layout.InstallDir, "core")
 	coreAppsDir := filepath.Join(layout.InstallDir, "core", "apps")
 	adapterDir := filepath.Join(layout.InstallDir, "adapters", "dahua-terminal-adapter")
 
@@ -148,7 +149,7 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 					{Name: "api-health", URL: "http://127.0.0.1:3000/health", TimeoutMS: 3000},
 				},
 				Commands: []CommandSpec{
-					nodeCommand("api", nodePath, filepath.Join(coreAppsDir, "api"), filepath.Join(coreAppsDir, "api", "dist", "index.js")),
+					nodeCommand("api", nodePath, coreRootDir, filepath.Join(coreAppsDir, "api", "dist", "index.js")),
 				},
 			},
 			{
@@ -160,8 +161,8 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 					{Name: "device-service-health", URL: "http://127.0.0.1:4010/health", TimeoutMS: 3000},
 				},
 				Commands: []CommandSpec{
-					nodeCommand("api", nodePath, filepath.Join(coreAppsDir, "device-service"), filepath.Join(coreAppsDir, "device-service", "dist", "api", "main.js")),
-					nodeCommand("outbox", nodePath, filepath.Join(coreAppsDir, "device-service"), filepath.Join(coreAppsDir, "device-service", "dist", "outbox", "main.js")),
+					nodeCommand("api", nodePath, coreRootDir, filepath.Join(coreAppsDir, "device-service", "dist", "api", "main.js")),
+					nodeCommand("outbox", nodePath, coreRootDir, filepath.Join(coreAppsDir, "device-service", "dist", "outbox", "main.js")),
 				},
 			},
 			{
@@ -170,7 +171,7 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 				RequiresLicense: true,
 				Env:             commonServiceEnv(layout),
 				Commands: []CommandSpec{
-					nodeCommand("bot", nodePath, filepath.Join(coreAppsDir, "bot"), filepath.Join(coreAppsDir, "bot", "dist", "main.js")),
+					nodeCommand("bot", nodePath, coreRootDir, filepath.Join(coreAppsDir, "bot", "dist", "main.js")),
 				},
 			},
 			{
@@ -179,11 +180,11 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 				RequiresLicense: true,
 				Env:             commonServiceEnv(layout),
 				Commands: []CommandSpec{
-					nodeCommand("preprocess", nodePath, filepath.Join(coreAppsDir, "worker"), filepath.Join(coreAppsDir, "worker", "dist", "main.js")),
-					nodeCommand("access-events", nodePath, filepath.Join(coreAppsDir, "worker"), filepath.Join(coreAppsDir, "worker", "dist", "accessEvents", "main.js")),
-					nodeCommand("outbox", nodePath, filepath.Join(coreAppsDir, "worker"), filepath.Join(coreAppsDir, "worker", "dist", "outbox", "main.js")),
-					nodeCommand("retention", nodePath, filepath.Join(coreAppsDir, "worker"), filepath.Join(coreAppsDir, "worker", "dist", "retention", "main.js")),
-					nodeCommand("monitoring", nodePath, filepath.Join(coreAppsDir, "worker"), filepath.Join(coreAppsDir, "worker", "dist", "monitoring", "main.js")),
+					nodeCommand("preprocess", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "main.js")),
+					nodeCommand("access-events", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "accessEvents", "main.js")),
+					nodeCommand("outbox", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "outbox", "main.js")),
+					nodeCommand("retention", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "retention", "main.js")),
+					nodeCommand("monitoring", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "monitoring", "main.js")),
 				},
 			},
 			{
@@ -195,7 +196,7 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 					{Name: "admin-ui-health", URL: "http://127.0.0.1:5000/healthz", TimeoutMS: 3000},
 				},
 				Commands: []CommandSpec{
-					nodeCommand("admin-ui", nodePath, filepath.Join(coreAppsDir, "admin-ui"), filepath.Join(coreAppsDir, "admin-ui", ".output", "server", "index.mjs")),
+					nodeCommand("admin-ui", nodePath, coreRootDir, filepath.Join(coreAppsDir, "admin-ui", ".output", "server", "index.mjs")),
 				},
 			},
 			{
@@ -232,16 +233,26 @@ func nodeCommand(name, nodePath, workingDir, scriptPath string) CommandSpec {
 
 func commonServiceEnv(layout Layout) map[string]string {
 	return map[string]string{
-		"NODE_ENV":        "production",
-		"SG_INSTALL_DIR":  layout.InstallDir,
-		"SG_CONFIG_DIR":   layout.ConfigDir,
-		"SG_DATA_DIR":     layout.DataDir,
-		"SG_LOGS_DIR":     layout.LogsDir,
-		"SG_LICENSES_DIR": layout.LicensesDir,
-		"SG_RUNTIME_DIR":  layout.RuntimeDir,
-		"SG_UPDATES_DIR":  layout.UpdatesDir,
-		"SG_SUPERVISOR":   layout.Root,
-		"SG_SERVICE_MODE": "supervisor",
+		"NODE_ENV":              "production",
+		"LOG_LEVEL":             "info",
+		"LOG_DIR":               filepath.Join(layout.LogsDir, "school-gate"),
+		"LOG_MAX_BYTES":         "104857600",
+		"LOG_RETENTION_DAYS":    "7",
+		"BACKUP_DIR":            filepath.Join(layout.BackupsDir, "school-gate"),
+		"BACKUP_LICENSE_DIR":    layout.LicensesDir,
+		"BACKUP_INCLUDE_LOGS":   "false",
+		"BACKUP_LOGS_MAX_FILES": "4",
+		"BACKUP_KEEP_NIGHTLY":   "14",
+		"BACKUP_KEEP_PREUPDATE": "3",
+		"SG_INSTALL_DIR":        layout.InstallDir,
+		"SG_CONFIG_DIR":         layout.ConfigDir,
+		"SG_DATA_DIR":           layout.DataDir,
+		"SG_LOGS_DIR":           layout.LogsDir,
+		"SG_LICENSES_DIR":       layout.LicensesDir,
+		"SG_RUNTIME_DIR":        layout.RuntimeDir,
+		"SG_UPDATES_DIR":        layout.UpdatesDir,
+		"SG_SUPERVISOR":         layout.Root,
+		"SG_SERVICE_MODE":       "supervisor",
 	}
 }
 
@@ -263,4 +274,13 @@ func cloneEnv(source map[string]string) map[string]string {
 		target[key] = value
 	}
 	return target
+}
+
+func isSupervisorManagedService(name string) bool {
+	switch name {
+	case "api", "device-service", "bot", "worker", "admin-ui", "dahua-terminal-adapter":
+		return true
+	default:
+		return false
+	}
 }

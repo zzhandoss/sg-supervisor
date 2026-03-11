@@ -29,6 +29,12 @@ func TestApplyRuntimeConfigInjectsCoreAndAdapterEnv(t *testing.T) {
 	if apiEnv["CORE_TOKEN"] != "core-token" || apiEnv["DB_FILE"] != filepath.Join(layout.DataDir, "school-gate", "app.db") {
 		t.Fatalf("unexpected api env: %+v", apiEnv)
 	}
+	if apiEnv["LOG_DIR"] != filepath.Join(layout.LogsDir, "school-gate") {
+		t.Fatalf("expected canonical log dir, got %+v", apiEnv)
+	}
+	if apiEnv["BACKUP_DIR"] != filepath.Join(layout.BackupsDir, "school-gate") {
+		t.Fatalf("expected canonical backup dir, got %+v", apiEnv)
+	}
 
 	botEnv := applied.Services[1].Env
 	if botEnv["BOT_INTERNAL_TOKEN"] != "bot-internal" || botEnv["TELEGRAM_BOT_TOKEN"] != "bot-token" {

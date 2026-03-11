@@ -98,6 +98,10 @@ func (a *App) runBootstrapPipeline(ctx context.Context) {
 	if err := a.cleanupBootstrapWorkspace(&status); err != nil {
 		return
 	}
+	if err := a.syncRuntimeConfig(); err != nil {
+		a.failBootstrap(status, "cleanup-workspace", err)
+		return
+	}
 	status.State = "succeeded"
 	status.CurrentStep = ""
 	status.FinishedAt = time.Now().UTC().Format(time.RFC3339)
@@ -170,39 +174,6 @@ func (a *App) buildBootstrapSource(ctx context.Context, status *bootstrap.Status
 		}
 	}
 	return a.completeBootstrapStep(status, "build-school-gate", "School-gate build finished")
-}
-
-func (a *App) deployBootstrapSource(ctx context.Context, status *bootstrap.Status, sourceRoot string) error {
-	if err := a.markBootstrapStep(status, "deploy-school-gate", "running", "Preparing runnable school-gate layout"); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(filepath.Join(a.layout.InstallDir, "core")); err != nil {
-		a.failBootstrap(*status, "deploy-school-gate", err)
-		return err
-	}
-	for _, target := range bootstrapDeployTargets() {
-		targetDir := filepath.Join(a.layout.InstallDir, "core", target.TargetPath)
-		if _, err := runBootstrapCommand(ctx, sourceRoot, bootstrapCommandEnv(a.root), corepackExecutablePath(a.root), "pnpm", "--filter", target.Filter, "deploy", "--prod", "--legacy", targetDir); err != nil {
-			a.failBootstrap(*status, "deploy-school-gate", err)
-			return err
-		}
-	}
-	adminSourceDir := filepath.Join(sourceRoot, "apps", "admin-ui")
-	adminTargetDir := filepath.Join(a.layout.InstallDir, "core", "apps", "admin-ui")
-	adminBuildDir, err := resolveAdminUIBuildDir(adminSourceDir)
-	if err != nil {
-		a.failBootstrap(*status, "deploy-school-gate", err)
-		return err
-	}
-	if err := copyDir(adminBuildDir, filepath.Join(adminTargetDir, ".output")); err != nil {
-		a.failBootstrap(*status, "deploy-school-gate", err)
-		return err
-	}
-	if err := copyFile(filepath.Join(adminSourceDir, "package.json"), filepath.Join(adminTargetDir, "package.json")); err != nil {
-		a.failBootstrap(*status, "deploy-school-gate", err)
-		return err
-	}
-	return a.completeBootstrapStep(status, "deploy-school-gate", "Runnable school-gate layout prepared")
 }
 
 func (a *App) prepareBootstrapAdapter(ctx context.Context, status *bootstrap.Status, assets bootstrapAssets) error {

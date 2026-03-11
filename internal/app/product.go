@@ -21,7 +21,11 @@ func (a *App) syncRuntimeConfig() error {
 	if err != nil {
 		return err
 	}
-	a.runtime.Reconfigure(config.ApplyRuntimeConfig(a.layout, catalog, productCfg, internalCfg))
+	applied := config.ApplyRuntimeConfig(a.layout, catalog, productCfg, internalCfg)
+	if err := config.WriteInstalledEnvFiles(a.layout, applied); err != nil {
+		return err
+	}
+	a.runtime.Reconfigure(applied)
 	return nil
 }
 

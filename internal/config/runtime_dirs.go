@@ -9,7 +9,9 @@ func EnsureRuntimeDirectories(layout Layout) error {
 	dirs := []string{
 		filepath.Join(layout.DataDir, "school-gate"),
 		filepath.Join(layout.DataDir, "dahua-terminal-adapter"),
+		filepath.Join(layout.LogsDir, "school-gate"),
 		filepath.Join(layout.LogsDir, "dahua-terminal-adapter"),
+		filepath.Join(layout.BackupsDir, "school-gate"),
 		filepath.Join(layout.RuntimeDir, "config"),
 	}
 	for _, dir := range dirs {

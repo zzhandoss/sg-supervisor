@@ -39,4 +39,8 @@ func TestDefaultServiceCatalogAdminUIUsesNodeProcess(t *testing.T) {
 	if len(adminUI.Commands[0].Args) != 1 || adminUI.Commands[0].Args[0] != expectedScript {
 		t.Fatalf("unexpected admin-ui args: %#v", adminUI.Commands[0].Args)
 	}
+	expectedWorkingDir := filepath.Join(layout.InstallDir, "core")
+	if adminUI.Commands[0].WorkingDir != expectedWorkingDir {
+		t.Fatalf("expected admin-ui working dir %q, got %q", expectedWorkingDir, adminUI.Commands[0].WorkingDir)
+	}
 }
