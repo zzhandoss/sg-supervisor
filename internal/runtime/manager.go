@@ -89,7 +89,7 @@ func (m *Manager) Start(ctx context.Context, name string, licenseValid bool) err
 	status.State = "starting"
 	status.Components = make([]ComponentStatus, 0, len(spec.Commands))
 
-	for _, component := range spec.Commands {
+	for index, component := range spec.Commands {
 		if err := ctx.Err(); err != nil {
 			for _, startedEntry := range started {
 				if startedEntry.command.Process != nil {
@@ -132,6 +132,9 @@ func (m *Manager) Start(ctx context.Context, name string, licenseValid bool) err
 			PID:        command.Process.Pid,
 			StartedAt:  time.Now().UTC().Format(time.RFC3339),
 		})
+		if spec.StartupDelayMS > 0 && index < len(spec.Commands)-1 {
+			time.Sleep(time.Duration(spec.StartupDelayMS) * time.Millisecond)
+		}
 	}
 
 	status.State = "running"

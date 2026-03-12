@@ -25,6 +25,15 @@ func (a *App) ApplyPackage(ctx context.Context, packageID string) (updates.Activ
 	if err := a.stopServicesForUpdate(ctx, runningServices); err != nil {
 		return updates.ActiveRecord{}, err
 	}
+	if err := a.preUpdateBackup(ctx); err != nil {
+		restarted, restoreErr := a.restartServices(ctx, runningServices, licenseStatus.Valid)
+		_ = a.saveUpdateOperation("backup-failed", "not-needed", packageID, previousActive.PackageID, err.Error())
+		if restoreErr != nil {
+			return updates.ActiveRecord{}, fmt.Errorf("pre-update backup failed: %v; restore services failed: %w", err, restoreErr)
+		}
+		_ = restarted
+		return updates.ActiveRecord{}, fmt.Errorf("pre-update backup failed: %w", err)
+	}
 
 	active, err := a.updates.Apply(ctx, packageID)
 	if err != nil {

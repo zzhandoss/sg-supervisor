@@ -45,6 +45,12 @@ func TestApplyRuntimeConfigInjectsCoreAndAdapterEnv(t *testing.T) {
 	if adapterEnv["ADAPTER_INSTANCE_NAME"] != "dahua-adapter" || adapterEnv["DS_BEARER_TOKEN"] != "device-token" {
 		t.Fatalf("unexpected adapter env: %+v", adapterEnv)
 	}
+	if adapterEnv["LOG_DIR"] != filepath.Join(layout.LogsDir, "dahua-terminal-adapter") {
+		t.Fatalf("expected adapter log dir, got %+v", adapterEnv)
+	}
+	if adapterEnv["BACKUP_DIR"] != filepath.Join(layout.BackupsDir, "dahua-terminal-adapter") {
+		t.Fatalf("expected adapter backup dir, got %+v", adapterEnv)
+	}
 }
 
 func TestServiceConfiguredRequiresExpectedEnv(t *testing.T) {

@@ -66,6 +66,10 @@ func injectInternalRuntimeEnv(serviceName string, env map[string]string, layout 
 		env["NITRO_PORT"] = "5000"
 	}
 	if serviceName == "dahua-terminal-adapter" {
+		env["LOG_DIR"] = filepath.Join(layout.LogsDir, "dahua-terminal-adapter")
+		env["BACKUP_DIR"] = filepath.Join(layout.BackupsDir, "dahua-terminal-adapter")
+		env["BACKUP_LICENSE_DIR"] = layout.LicensesDir
+		env["BACKUP_INCLUDE_LOGS"] = "true"
 		env["BASE_URL"] = "http://127.0.0.1:8091"
 		env["ADAPTER_INSTANCE_KEY"] = "dahua-adapter"
 		env["ADAPTER_INSTANCE_NAME"] = "dahua-adapter"

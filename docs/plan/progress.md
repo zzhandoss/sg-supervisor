@@ -180,3 +180,6 @@
 - added bootstrap-time database migrations plus runtime-directory preparation so fresh Windows source-bootstrap installs produce a runnable core layout without extra manual setup
 - updated adapter bootstrap for pnpm v10 by explicitly allowing `better-sqlite3` build scripts, which removed the native-binding failure on Windows
 - validated the Windows source-bootstrap e2e path on `.tmp/e2e/v1.0.13-e2e-services`: bootstrap succeeded, `api` and `device-service` reached `ready`, `worker` stayed running, `dahua-terminal-adapter` reached `ready`, and `bot` remained the only expected blocked service because `TELEGRAM_BOT_TOKEN` is unset
+- integrated `pre-update` backup into `ApplyPackage` so both `school-gate` and `dahua-terminal-adapter` create their own `pre-update` snapshots before package replacement begins
+- validated update apply on a live self-check root: signed bundle import succeeded, `school-gate` backup appeared under `backups/school-gate/pre-update/...`, adapter backup appeared under `backups/dahua-terminal-adapter/...`, and the package became active without rollback
+- fixed `worker` startup instability by introducing a service-level startup delay between worker subprocesses, which eliminated the `SQLITE_BUSY` race on cold start and after update restart in the Windows self-check root

@@ -19,6 +19,7 @@ type ServiceSpec struct {
 	Name            string            `json:"name"`
 	Kind            string            `json:"kind"`
 	Commands        []CommandSpec     `json:"commands,omitempty"`
+	StartupDelayMS  int               `json:"startupDelayMs,omitempty"`
 	Env             map[string]string `json:"env,omitempty"`
 	StaticDir       string            `json:"staticDir,omitempty"`
 	HealthChecks    []HealthCheckSpec `json:"healthChecks,omitempty"`
@@ -129,6 +130,9 @@ func requiresServiceReset(current, def ServiceSpec) bool {
 	if isSupervisorManagedService(current.Name) && !reflect.DeepEqual(current.Commands, def.Commands) {
 		return true
 	}
+	if isSupervisorManagedService(current.Name) && current.StartupDelayMS != def.StartupDelayMS {
+		return true
+	}
 	return false
 }
 
@@ -178,6 +182,7 @@ func defaultServiceCatalog(layout Layout) ServiceCatalog {
 				Name:            "worker",
 				Kind:            "process-group",
 				RequiresLicense: true,
+				StartupDelayMS:  750,
 				Env:             commonServiceEnv(layout),
 				Commands: []CommandSpec{
 					nodeCommand("preprocess", nodePath, coreRootDir, filepath.Join(coreAppsDir, "worker", "dist", "main.js")),
@@ -262,6 +267,9 @@ func adapterServiceEnv(layout Layout) map[string]string {
 	env["LOG_OUTPUT"] = "file"
 	env["LOG_DIR"] = filepath.Join(layout.LogsDir, "dahua-terminal-adapter")
 	env["SQLITE_PATH"] = filepath.Join(layout.DataDir, "dahua-terminal-adapter", "dahua-adapter.db")
+	env["BACKUP_DIR"] = filepath.Join(layout.BackupsDir, "dahua-terminal-adapter")
+	env["BACKUP_LICENSE_DIR"] = layout.LicensesDir
+	env["BACKUP_INCLUDE_LOGS"] = "true"
 	return env
 }
 
